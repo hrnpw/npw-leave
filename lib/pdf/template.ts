@@ -274,12 +274,15 @@ export function generateLeaveFormHTML(
     }
 
     .checkbox.checked::after {
-      content: '✓';
+      content: '';
       position: absolute;
-      top: -4px;
-      left: 1px;
-      font-size: 13pt;
-      font-weight: bold;
+      left: 4px;
+      top: 1px;
+      width: 4px;
+      height: 8px;
+      border: solid #000;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
     }
 
     .leave-type-list .option {
