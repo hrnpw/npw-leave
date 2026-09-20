@@ -24,7 +24,7 @@
     "@aws-sdk/lib-storage": "^3.1132.0",
     "@aws-sdk/s3-request-presigner": "^3.1132.0",
     "@prisma/client": "^5.22.0",
-    "@sparticuz/chromium-min": "^153.0.0",
+    "@sparticuz/chromium": "^153.0.0",
     "@types/node": "^26.5.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",

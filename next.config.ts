@@ -5,11 +5,11 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
 
   // Externalize chromium packages for serverless functions
-  serverExternalPackages: ['@sparticuz/chromium-min', 'puppeteer-core'],
+  serverExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
 
   // Include chromium binaries in output
   outputFileTracingIncludes: {
-    '/api/**/*': ['./node_modules/@sparticuz/chromium-min/**/*'],
+    '/api/**/*': ['./node_modules/@sparticuz/chromium/**/*'],
   },
 
   // Security headers

@@ -1,5 +1,5 @@
 import puppeteer from 'puppeteer-core';
-import chromium from '@sparticuz/chromium-min';
+import chromium from '@sparticuz/chromium';
 import { generateLeaveFormHTML } from './template';
 import { prisma } from '@/lib/prisma';
 import { readFileSync, existsSync } from 'fs';
