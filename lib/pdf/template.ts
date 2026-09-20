@@ -526,6 +526,7 @@ export function generateLeaveFormHTML(
         <div class="heading">ความเห็นผู้บังคับบัญชา</div>
         <div class="opinion-line">${approverComment}</div>
         <div class="opinion-line"></div>
+		<div class="opinion-line"></div>
         <div class="approve-row">
           <span class="option">${checkbox(false)} อนุญาต</span>
           <span class="option">${checkbox(false)} ไม่อนุญาต</span>
