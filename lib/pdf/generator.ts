@@ -231,12 +231,12 @@ export async function generateLeavePDF(
     browser = await puppeteer.launch({
       args: isDev
         ? []
-        : await chromium.args,
+        : chromium.args,
       defaultViewport: isDev ? { width: 1280, height: 720 } : { width: 1280, height: 720 },
       executablePath: isDev
         ? process.env.CHROME_PATH ||
           'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-        : await chromium.executablePath(),
+        : await chromium.executablePath('/opt/chromium'),
       headless: true,
     });
 
