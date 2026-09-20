@@ -366,7 +366,7 @@ export function generateLeaveFormHTML(
 
     .opinion-box .heading {
       font-weight: bold;
-	  margin-top: 60px;
+	  margin-top: 30px;
       margin-bottom: 4px;
     }
 	
@@ -525,7 +525,6 @@ export function generateLeaveFormHTML(
       <div class="opinion-box">
         <div class="heading">ความเห็นผู้บังคับบัญชา</div>
         <div class="opinion-line">${approverComment}</div>
-        <div class="opinion-line"></div>
         <div class="opinion-line"></div>
         <div class="approve-row">
           <span class="option">${checkbox(false)} อนุญาต</span>
