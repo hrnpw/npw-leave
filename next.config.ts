@@ -9,6 +9,15 @@ const nextConfig: NextConfig = {
     '/api/**/*': ['./node_modules/@sparticuz/chromium-min/**/*'],
   },
 
+  // Turbopack config (Next.js 16+)
+  turbopack: {
+    resolveAlias: {
+      // Externalize chromium for Turbopack
+      '@sparticuz/chromium-min': '@sparticuz/chromium-min',
+    },
+  },
+
+  // Webpack config (fallback for non-Turbopack builds)
   webpack: (config, { isServer }) => {
     if (isServer) {
       // Externalize @sparticuz/chromium-min to prevent bundling
