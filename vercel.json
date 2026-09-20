@@ -1,4 +1,10 @@
 {
+  "crons": [
+    {
+      "path": "/api/cron/daily-summary",
+      "schedule": "0 1 * * *"
+    }
+  ],
   "functions": {
     "app/api/hr/leaves/[id]/pdf/route.ts": {
       "maxDuration": 30
