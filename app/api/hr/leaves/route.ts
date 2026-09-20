@@ -3,7 +3,7 @@ import { getHrSession } from '@/lib/getSession';
 import { prisma } from '@/lib/prisma';
 import { formatDateForAPI } from '@/lib/dateFormat';
 import type { LeaveStatus, LeaveType } from '@/types/leave';
-import { getFiscalRoundDateRange, getFiscalYearsRange } from '@/lib/fiscalYear';
+import { getFiscalRoundDateRange } from '@/lib/fiscalYear';
 
 export async function GET(req: NextRequest) {
   try {
