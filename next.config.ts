@@ -9,6 +9,15 @@ const nextConfig: NextConfig = {
     '/api/**/*': ['./node_modules/@sparticuz/chromium-min/**/*'],
   },
 
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // Externalize @sparticuz/chromium-min to prevent bundling
+      config.externals = config.externals || [];
+      config.externals.push('@sparticuz/chromium-min');
+    }
+    return config;
+  },
+
   // Security headers
   async headers() {
     return [
