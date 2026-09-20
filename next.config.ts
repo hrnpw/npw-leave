@@ -5,13 +5,9 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
 
-  // Externalize chromium for serverless functions
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externals = config.externals || [];
-      config.externals.push('@sparticuz/chromium');
-    }
-    return config;
+  // Externalize chromium for Vercel serverless functions
+  outputFileTracingIncludes: {
+    '/api/**/*': ['./node_modules/@sparticuz/chromium/**/*'],
   },
 
   // Security headers
