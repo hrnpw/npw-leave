@@ -2,8 +2,6 @@ import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 import { generateLeaveFormHTML } from './template';
 import { prisma } from '@/lib/prisma';
-import { readFileSync, existsSync } from 'fs';
-import { join } from 'path';
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -94,8 +92,7 @@ export async function calculateLeaveStats(
   teacherId: string,
   fiscalYear: number,
   leaveType: string,
-  excludeLeaveId?: string,
-  currentLeaveNo?: string | null
+  excludeLeaveId?: string
 ): Promise<LeaveData['leaveDayStats']> {
   const stats: LeaveData['leaveDayStats'] = {
     round1: {
@@ -112,28 +109,21 @@ export async function calculateLeaveStats(
     },
   };
 
-  const whereConditions: any = {
-    teacherId,
-    fiscalYear,
-    status: 'approved',
-    type: { in: ['sick', 'personal', 'maternity', 'religious'] },
-  };
-
-  if (excludeLeaveId) {
-    whereConditions.id = { not: excludeLeaveId };
-  }
-
-  if (currentLeaveNo) {
-    whereConditions.leaveNo = { lt: currentLeaveNo };
-  }
-
+  // Get ALL approved leaves for this teacher and fiscal year (excluding current leave)
+  // เอาทุกประเภท เพื่อแสดงในตารางสถิติ
   const approvedLeaves = await prisma.leave.findMany({
-    where: whereConditions,
+    where: {
+      teacherId,
+      fiscalYear,
+      status: 'approved',
+      type: { in: ['sick', 'personal', 'maternity', 'religious'] },
+      id: excludeLeaveId ? { not: excludeLeaveId } : undefined,
+    },
     include: {
       leaveDays: true,
     },
     orderBy: {
-      leaveNo: 'asc',
+      approvedAt: 'asc',
     },
   });
 
@@ -209,23 +199,11 @@ export async function generateLeavePDF(
   let browser = null;
 
   try {
-    // Read school logo base64
-    let schoolLogoBase64: string | undefined;
-    try {
-      const logoPath = join(process.cwd(), 'public', 'icons', 'logo-npw-PDF.png');
-      if (existsSync(logoPath)) {
-        const logoBuffer = readFileSync(logoPath);
-        schoolLogoBase64 = logoBuffer.toString('base64');
-      }
-    } catch (err) {
-      console.warn('School logo not found, skipping...');
-    }
-
     // Generate HTML
     const html = generateLeaveFormHTML(leave, {
       schoolName: settings.schoolName,
       schoolAddress: settings.schoolAddress || '',
-    }, qrCodeDataUrl, schoolLogoBase64);
+    }, qrCodeDataUrl);
 
     // Launch browser
     browser = await puppeteer.launch({
@@ -253,9 +231,9 @@ export async function generateLeavePDF(
       printBackground: true,
       margin: {
         top: '1.5cm',
-        right: '2cm',
+        right: '1.5cm',
         bottom: '1.5cm',
-        left: '2cm',
+        left: '1.5cm',
       },
     });
 
