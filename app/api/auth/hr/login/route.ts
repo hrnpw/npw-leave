@@ -58,15 +58,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update last login
-    await prisma.hrUser.update({
-      where: { id: hrUser.id },
-      data: {
-        lastLoginAt: new Date(),
-        lastLoginIp: ip,
-      },
-    });
-
+    // Create session first (critical path)
     const session = await getHrSession();
     session.id = hrUser.id;
     session.username = hrUser.username;
@@ -75,6 +67,18 @@ export async function POST(request: NextRequest) {
     session.role = hrUser.role;
     session.createdAt = Date.now();
     await session.save();
+
+    // Update last login (non-critical - don't block response if it fails)
+    prisma.hrUser.update({
+      where: { id: hrUser.id },
+      data: {
+        lastLoginAt: new Date(),
+        lastLoginIp: ip,
+      },
+    }).catch(err => {
+      console.error('Failed to update lastLoginAt:', err);
+      // Don't throw - session is already created
+    });
 
     return NextResponse.json({
       success: true,
