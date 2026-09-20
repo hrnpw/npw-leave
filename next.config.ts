@@ -4,27 +4,12 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
 
-  // Externalize chromium for Vercel serverless functions
+  // Externalize chromium packages for serverless functions
+  serverExternalPackages: ['@sparticuz/chromium-min', 'puppeteer-core'],
+
+  // Include chromium binaries in output
   outputFileTracingIncludes: {
     '/api/**/*': ['./node_modules/@sparticuz/chromium-min/**/*'],
-  },
-
-  // Turbopack config (Next.js 16+)
-  turbopack: {
-    resolveAlias: {
-      // Externalize chromium for Turbopack
-      '@sparticuz/chromium-min': '@sparticuz/chromium-min',
-    },
-  },
-
-  // Webpack config (fallback for non-Turbopack builds)
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      // Externalize @sparticuz/chromium-min to prevent bundling
-      config.externals = config.externals || [];
-      config.externals.push('@sparticuz/chromium-min');
-    }
-    return config;
   },
 
   // Security headers
