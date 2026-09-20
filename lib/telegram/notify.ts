@@ -67,23 +67,43 @@ export async function sendTelegramMessage(
   }
 }
 
-export async function retryWithBackoff<T>(
+export async function retryWithBackoff<T extends { success: boolean; error?: string }>(
   fn: () => Promise<T>,
   maxRetries = 3,
   delays = [1000, 3000, 5000]
 ): Promise<T> {
   console.log(`[TELEGRAM LIB] retryWithBackoff: maxRetries=${maxRetries}`);
-  let lastError: Error | undefined;
+  let lastResult: T | undefined;
 
   for (let i = 0; i < maxRetries; i++) {
     try {
       console.log(`[TELEGRAM LIB] Attempt ${i + 1}/${maxRetries}`);
       const result = await fn();
-      console.log(`[TELEGRAM LIB] Attempt ${i + 1} succeeded`);
-      return result;
+      console.log(`[TELEGRAM LIB] Attempt ${i + 1} result:`, result);
+
+      // ถ้าสำเร็จ ให้ return ทันที
+      if (result.success) {
+        console.log(`[TELEGRAM LIB] Attempt ${i + 1} succeeded`);
+        return result;
+      }
+
+      // ถ้าล้มเหลว เก็บไว้แล้ว retry
+      lastResult = result;
+      console.error(`[TELEGRAM LIB] Attempt ${i + 1} failed:`, result.error);
+
+      if (i < maxRetries - 1) {
+        const delay = delays[i];
+        console.log(`[TELEGRAM LIB] Waiting ${delay}ms before retry...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      console.error(`[TELEGRAM LIB] Attempt ${i + 1} failed:`, lastError.message);
+      // กรณี network error หรือ exception อื่นๆ
+      console.error(`[TELEGRAM LIB] Attempt ${i + 1} threw error:`, error);
+      lastResult = {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      } as T;
+
       if (i < maxRetries - 1) {
         const delay = delays[i];
         console.log(`[TELEGRAM LIB] Waiting ${delay}ms before retry...`);
@@ -93,5 +113,5 @@ export async function retryWithBackoff<T>(
   }
 
   console.error(`[TELEGRAM LIB] All ${maxRetries} attempts failed`);
-  throw lastError;
+  return lastResult!;
 }

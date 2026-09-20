@@ -1,7 +1,7 @@
 # Leave-NPW Project
 
 ระบบยื่น/อนุมัติใบลาสำหรับโรงเรียน (Mobile Web App, Next.js + PWA)
-อยู่ในขั้นตอนเตรียมตัว deploy
+deploy แล้ว
 
 ## Code 
 
