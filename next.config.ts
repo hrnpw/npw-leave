@@ -4,14 +4,6 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
 
-  // Externalize chromium packages for serverless functions
-  serverExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
-
-  // Include chromium binaries in output
-  outputFileTracingIncludes: {
-    '/api/**/*': ['./node_modules/@sparticuz/chromium/**/*'],
-  },
-
   // Security headers
   async headers() {
     return [

@@ -5,12 +5,11 @@
   "main": "index.js",
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
-    "build": "prisma generate && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest",
-    "test:ui": "vitest --ui",
-    "postinstall": "prisma generate"
+    "test:ui": "vitest --ui"
   },
   "keywords": [],
   "author": "",
@@ -24,7 +23,7 @@
     "@aws-sdk/lib-storage": "^3.1132.0",
     "@aws-sdk/s3-request-presigner": "^3.1132.0",
     "@prisma/client": "^5.22.0",
-    "@sparticuz/chromium": "^153.0.0",
+    "@sparticuz/chromium": "^152.0.0",
     "@types/node": "^26.5.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
