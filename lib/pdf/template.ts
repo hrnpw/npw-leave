@@ -1,5 +1,29 @@
 import { format, differenceInCalendarDays } from 'date-fns';
 import { th } from 'date-fns/locale';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+// Cache fonts to avoid re-reading on every PDF generation
+let cachedFontRegular: string | null = null;
+let cachedFontBold: string | null = null;
+
+function getBase64Font(fontName: 'regular' | 'bold'): string {
+  if (fontName === 'regular') {
+    if (!cachedFontRegular) {
+      const fontPath = join(process.cwd(), 'public', 'fonts', 'THSarabunNew.ttf');
+      const fontBuffer = readFileSync(fontPath);
+      cachedFontRegular = fontBuffer.toString('base64');
+    }
+    return cachedFontRegular;
+  } else {
+    if (!cachedFontBold) {
+      const fontPath = join(process.cwd(), 'public', 'fonts', 'THSarabunNew Bold.ttf');
+      const fontBuffer = readFileSync(fontPath);
+      cachedFontBold = fontBuffer.toString('base64');
+    }
+    return cachedFontBold;
+  }
+}
 
 interface LeaveData {
   leaveNo: string;
@@ -147,6 +171,10 @@ export function generateLeaveFormHTML(
   const directorName = leave.directorNameSnapshot || '';
   const directorPosition = leave.directorPositionSnapshot || '';
 
+  // Get base64 fonts
+  const fontRegular = getBase64Font('regular');
+  const fontBold = getBase64Font('bold');
+
   return `
 <!DOCTYPE html>
 <html lang="th">
@@ -157,13 +185,13 @@ export function generateLeaveFormHTML(
   <style>
     @font-face {
       font-family: 'TH Sarabun New';
-      src: url('data:font/truetype;charset=utf-8;base64,...') format('truetype');
+      src: url('data:font/truetype;charset=utf-8;base64,${fontRegular}') format('truetype');
       font-weight: normal;
       font-style: normal;
     }
     @font-face {
       font-family: 'TH Sarabun New';
-      src: url('data:font/truetype;charset=utf-8;base64,...') format('truetype');
+      src: url('data:font/truetype;charset=utf-8;base64,${fontBold}') format('truetype');
       font-weight: bold;
       font-style: normal;
     }
