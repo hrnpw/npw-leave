@@ -1,11 +1,9 @@
 {
   "functions": {
     "app/api/hr/leaves/[id]/pdf/route.ts": {
-      "memory": 1024,
       "maxDuration": 30
     },
     "app/api/hr/leaves/[id]/generate-pdf/route.ts": {
-      "memory": 1024,
       "maxDuration": 30
     }
   }
