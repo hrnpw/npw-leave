@@ -1,0 +1,274 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Teacher {
+  id          String   @id @default(cuid())
+  teacherCode String   @unique @map("teacher_code")
+  citizenId   String   @unique @map("citizen_id")
+  title       String
+  firstName   String   @map("first_name")
+  lastName    String   @map("last_name")
+  birthDate   DateTime @map("birth_date") @db.Date
+  position    String
+  department  String?
+  phone       String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  leaves      Leave[]
+
+  @@index([citizenId])
+  @@index([isActive])
+  @@map("teachers")
+}
+
+model HrUser {
+  id              String     @id @default(cuid())
+  username        String     @unique
+  passwordHash    String     @map("password_hash")
+  firstName       String     @map("first_name")
+  lastName        String     @map("last_name")
+  role            HrRole
+  isActive        Boolean    @default(true) @map("is_active")
+  lastLoginAt     DateTime?  @map("last_login_at")
+  lastLoginIp     String?    @map("last_login_ip")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+  auditLogs       AuditLog[]
+  leavesSubmitted Leave[]    @relation("HrProxySubmit")
+
+  @@index([username])
+  @@index([isActive])
+  @@map("hr_users")
+}
+
+model Leave {
+  id                       String         @id @default(cuid())
+  leaveNo                  String         @unique @map("leave_no")
+  fiscalYear               Int            @map("fiscal_year")
+  round                    Int
+  runningNo                Int            @map("running_no")
+  teacherId                String         @map("teacher_id")
+  type                     LeaveType
+  customTypeName           String?        @map("custom_type_name")
+  startDate                DateTime       @map("start_date") @db.Date
+  endDate                  DateTime       @map("end_date") @db.Date
+  isHalfDay                Boolean        @default(false) @map("is_half_day")
+  halfDayPeriod            HalfDayPeriod? @map("half_day_period")
+  reason                   String
+  contactAddress           String         @map("contact_address")
+  contactPhone             String         @map("contact_phone")
+  status                   LeaveStatus    @default(pending)
+  rejectionReason          String?        @map("rejection_reason")
+  daysWorking              Float          @map("days_working")
+  daysCalendar             Float          @map("days_calendar")
+  submittedByType          SubmitType     @default(teacher) @map("submitted_by_type")
+  submittedByHrId          String?        @map("submitted_by_hr_id")
+  proxyReason              String?        @map("proxy_reason")
+  proxyNote                String?        @map("proxy_note")
+  teacherSignatureUrl      String?        @map("teacher_signature_url")
+  pdfUrl                   String?        @map("pdf_url")
+  approverNameSnapshot     String?        @map("approver_name_snapshot")
+  approverPositionSnapshot String?        @map("approver_position_snapshot")
+  directorNameSnapshot     String?        @map("director_name_snapshot")
+  directorPositionSnapshot String?        @map("director_position_snapshot")
+  approvedAt               DateTime?      @map("approved_at")
+  printedAt                DateTime?      @map("printed_at")
+  createdAt                DateTime       @default(now()) @map("created_at")
+  updatedAt                DateTime       @updatedAt @map("updated_at")
+  attachments              Attachment[]
+  leaveDays                LeaveDay[]
+  submittedByHr            HrUser?        @relation("HrProxySubmit", fields: [submittedByHrId], references: [id])
+  teacher                  Teacher        @relation(fields: [teacherId], references: [id])
+
+  @@unique([fiscalYear, round, runningNo])
+  @@index([teacherId])
+  @@index([status])
+  @@index([startDate, endDate])
+  @@index([createdAt])
+  @@index([submittedByHrId])
+  @@map("leaves")
+}
+
+model LeaveDay {
+  id            String         @id @default(cuid())
+  leaveId       String         @map("leave_id")
+  date          DateTime       @db.Date
+  isWorkingDay  Boolean        @map("is_working_day")
+  isHalfDay     Boolean        @default(false) @map("is_half_day")
+  halfDayPeriod HalfDayPeriod? @map("half_day_period")
+  leave         Leave          @relation(fields: [leaveId], references: [id], onDelete: Cascade)
+
+  @@index([leaveId])
+  @@index([date])
+  @@map("leave_days")
+}
+
+model Attachment {
+  id         String   @id @default(cuid())
+  leaveId    String   @map("leave_id")
+  fileName   String   @map("file_name")
+  fileSize   Int      @map("file_size")
+  mimeType   String   @map("mime_type")
+  blobUrl    String   @map("blob_url")
+  uploadedAt DateTime @default(now()) @map("uploaded_at")
+  leave      Leave    @relation(fields: [leaveId], references: [id], onDelete: Cascade)
+
+  @@index([leaveId])
+  @@map("attachments")
+}
+
+model Holiday {
+  id        String   @id @default(cuid())
+  date      DateTime @unique @db.Date
+  name      String
+  year      Int
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([year])
+  @@index([date])
+  @@map("holidays")
+}
+
+model Signatory {
+  id           String        @id @default(cuid())
+  role         SignatoryRole
+  title        String
+  firstName    String        @map("first_name")
+  lastName     String        @map("last_name")
+  position     String
+  signatureUrl String?       @map("signature_url")
+  isActive     Boolean       @default(true) @map("is_active")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  @@index([role, isActive])
+  @@map("signatories")
+}
+
+model Settings {
+  id                      String   @id @default("singleton")
+  schoolName              String   @default("โรงเรียนบ้านเนินพลับหวาน") @map("school_name")
+  systemStartDate         DateTime @map("system_start_date") @db.Date
+  backdateLimitDays       Int      @default(14) @map("backdate_limit_days")
+  hrBackdateLimitDays     Int      @default(30) @map("hr_backdate_limit_days")
+  quotaSickPersonal       Int      @default(23) @map("quota_sick_personal")
+  quotaMaternity          Int      @default(90) @map("quota_maternity")
+  quotaReligious          Int      @default(120) @map("quota_religious")
+  requireTeacherSignature Boolean  @default(false) @map("require_teacher_signature")
+  currentDirectorId       String?  @map("current_director_id")
+  currentHrHeadId         String?  @map("current_hr_head_id")
+  telegramBotToken        String?  @map("telegram_bot_token")
+  telegramChatId          String?  @map("telegram_chat_id")
+  storageWarningThreshold Int      @default(70) @map("storage_warning_threshold")
+  storageCriticalThreshold Int     @default(90) @map("storage_critical_threshold")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?  @map("user_id")
+  userType   String   @map("user_type")
+  action     String
+  resource   String
+  resourceId String?  @map("resource_id")
+  details    Json?
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+  hrUser     HrUser?  @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model NotificationQueue {
+  id             String             @id @default(cuid())
+  type           String
+  payload        Json
+  status         NotificationStatus @default(pending)
+  retryCount     Int                @default(0) @map("retry_count")
+  lastError      String?            @map("last_error")
+  idempotencyKey String?            @unique @map("idempotency_key")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  processedAt    DateTime?          @map("processed_at")
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("notification_queue")
+}
+
+model FiscalCounter {
+  fiscalYear Int      @map("fiscal_year")
+  round      Int
+  lastNumber Int      @default(0) @map("last_number")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@id([fiscalYear, round])
+  @@map("fiscal_counter")
+}
+
+model RateLimit {
+  key         String    @id
+  attempts    Int       @default(0)
+  lockedUntil DateTime? @map("locked_until")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@index([lockedUntil])
+  @@index([updatedAt])
+  @@map("rate_limits")
+}
+
+enum HrRole {
+  hr
+  super_admin
+}
+
+enum LeaveType {
+  sick
+  personal
+  maternity
+  religious
+  other
+}
+
+enum HalfDayPeriod {
+  morning
+  afternoon
+}
+
+enum LeaveStatus {
+  pending
+  approved
+  rejected
+  cancelled
+}
+
+enum SubmitType {
+  teacher
+  hr
+}
+
+enum SignatoryRole {
+  director
+  hr_head
+}
+
+enum NotificationStatus {
+  pending
+  processing
+  success
+  failed
+}
