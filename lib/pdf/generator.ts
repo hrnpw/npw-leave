@@ -1,5 +1,5 @@
 import puppeteer from 'puppeteer-core';
-import chromium from '@sparticuz/chromium';
+import chromium from '@sparticuz/chromium-min';
 import { generateLeaveFormHTML } from './template';
 import { prisma } from '@/lib/prisma';
 import { readFileSync, existsSync } from 'fs';
@@ -229,14 +229,12 @@ export async function generateLeavePDF(
 
     // Launch browser
     browser = await puppeteer.launch({
-      args: isDev
-        ? []
-        : chromium.args,
+      args: isDev ? [] : chromium.args,
       defaultViewport: isDev ? { width: 1280, height: 720 } : { width: 1280, height: 720 },
       executablePath: isDev
         ? process.env.CHROME_PATH ||
           'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-        : await chromium.executablePath('/opt/chromium'),
+        : await chromium.executablePath(),
       headless: true,
     });
 

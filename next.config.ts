@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
 
   // Externalize chromium for Vercel serverless functions
   outputFileTracingIncludes: {
-    '/api/**/*': ['./node_modules/@sparticuz/chromium/**/*'],
+    '/api/**/*': ['./node_modules/@sparticuz/chromium-min/**/*'],
   },
 
   // Security headers
