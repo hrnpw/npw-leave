@@ -2,12 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { verifyPassword } from '@/lib/auth';
-import {
-  getRateLimitKey,
-  checkRateLimit,
-  recordFailedAttempt,
-  recordSuccessfulAttempt
-} from '@/lib/rateLimit';
 import { getHrSession } from '@/lib/getSession';
 
 const loginSchema = z.object({
@@ -29,24 +23,10 @@ export async function POST(request: NextRequest) {
 
     const { username, password } = validation.data;
 
-    // Get client IP
+    // Get client IP for logging
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0] ||
                 request.headers.get('x-real-ip') ||
                 'unknown';
-
-    // Check rate limit
-    const rateLimitKey = getRateLimitKey('hr', username, ip);
-    const rateCheck = await checkRateLimit(rateLimitKey);
-
-    if (!rateCheck.allowed) {
-      return NextResponse.json(
-        {
-          error: `ลองเข้าสู่ระบบผิดหลายครั้ง กรุณารอ ${rateCheck.remainingTime} วินาที`,
-          lockedUntil: rateCheck.remainingTime,
-        },
-        { status: 429 }
-      );
-    }
 
     // Find HR user
     const hrUser = await prisma.hrUser.findUnique({
@@ -64,7 +44,6 @@ export async function POST(request: NextRequest) {
 
     // Verify password
     if (!hrUser || !(await verifyPassword(password, hrUser.passwordHash))) {
-      await recordFailedAttempt(rateLimitKey);
       return NextResponse.json(
         { error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' },
         { status: 401 }
@@ -73,15 +52,11 @@ export async function POST(request: NextRequest) {
 
     // Check if active
     if (!hrUser.isActive) {
-      await recordFailedAttempt(rateLimitKey);
       return NextResponse.json(
         { error: 'บัญชีถูกระงับ กรุณาติดต่อผู้ดูแลระบบ' },
         { status: 403 }
       );
     }
-
-    // Success - create session
-    await recordSuccessfulAttempt(rateLimitKey);
 
     // Update last login
     await prisma.hrUser.update({

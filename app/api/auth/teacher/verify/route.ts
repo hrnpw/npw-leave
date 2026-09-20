@@ -2,12 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { validateCitizenId, normalizeCitizenId } from '@/lib/citizenId';
-import {
-  getRateLimitKey,
-  checkRateLimit,
-  recordFailedAttempt,
-  recordSuccessfulAttempt
-} from '@/lib/rateLimit';
 import { getTeacherSession } from '@/lib/getSession';
 
 const verifySchema = z.object({
@@ -38,25 +32,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get client IP
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] ||
-                request.headers.get('x-real-ip') ||
-                'unknown';
-
-    // Check rate limit
-    const rateLimitKey = getRateLimitKey('teacher', normalizedId, ip);
-    const rateCheck = await checkRateLimit(rateLimitKey);
-
-    if (!rateCheck.allowed) {
-      return NextResponse.json(
-        {
-          error: `ลองเข้าสู่ระบบผิดหลายครั้ง กรุณารอ ${rateCheck.remainingTime} วินาที`,
-          lockedUntil: rateCheck.remainingTime,
-        },
-        { status: 429 }
-      );
-    }
-
     // Find teacher
     const teacher = await prisma.teacher.findUnique({
       where: { citizenId: normalizedId },
@@ -79,7 +54,6 @@ export async function POST(request: NextRequest) {
       !dbDate ||
       inputDate.getTime() !== dbDate.getTime()
     ) {
-      await recordFailedAttempt(rateLimitKey);
       return NextResponse.json(
         { error: 'ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบและลองใหม่' },
         { status: 401 }
@@ -88,7 +62,6 @@ export async function POST(request: NextRequest) {
 
     // Check if teacher is active
     if (!teacher.isActive) {
-      await recordFailedAttempt(rateLimitKey);
       return NextResponse.json(
         { error: 'ไม่พบข้อมูลหรือบัญชีถูกระงับ กรุณาติดต่อฝ่ายบุคคล' },
         { status: 403 }
@@ -96,7 +69,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Success - create session
-    await recordSuccessfulAttempt(rateLimitKey);
 
     const session = await getTeacherSession();
     session.id = teacher.id;
