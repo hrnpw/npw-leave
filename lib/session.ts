@@ -1,5 +1,4 @@
 import { SessionOptions } from 'iron-session';
-import { SESSION_CONFIG } from './session-config';
 
 export interface TeacherSession {
   id: string;
@@ -19,11 +18,11 @@ export interface HrSession {
 }
 
 // Session configuration - 1 hour sliding window
-const SESSION_TTL = SESSION_CONFIG.MAX_AGE; // Use centralized config
+const SESSION_TTL = 60 * 60; // 1 hour in seconds
 const SESSION_WARNING_TIME = 5 * 60; // 5 minutes before expiry
 
 export const teacherSessionOptions: SessionOptions = {
-  cookieName: SESSION_CONFIG.TEACHER_COOKIE_NAME,
+  cookieName: 'teacher_session',
   password: process.env.SESSION_SECRET!,
   ttl: SESSION_TTL,
   cookieOptions: {
@@ -36,7 +35,7 @@ export const teacherSessionOptions: SessionOptions = {
 };
 
 export const hrSessionOptions: SessionOptions = {
-  cookieName: SESSION_CONFIG.HR_COOKIE_NAME,
+  cookieName: 'hr_session',
   password: process.env.SESSION_SECRET!,
   ttl: SESSION_TTL,
   cookieOptions: {

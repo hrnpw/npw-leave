@@ -9,8 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest",
-    "test:ui": "vitest --ui",
-    "postinstall": "prisma generate"
+    "test:ui": "vitest --ui"
   },
   "keywords": [],
   "author": "",

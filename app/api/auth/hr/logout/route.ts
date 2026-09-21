@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { getHrSession } from '@/lib/getSession';
-import { SESSION_CONFIG } from '@/lib/session-config';
 
 export async function POST() {
   try {
@@ -11,7 +10,7 @@ export async function POST() {
     const response = NextResponse.json({ success: true });
 
     // Clear the session cookie explicitly
-    response.cookies.set(SESSION_CONFIG.HR_COOKIE_NAME, '', {
+    response.cookies.set('hr_session', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
