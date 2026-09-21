@@ -1,0 +1,515 @@
+import { format, differenceInCalendarDays } from 'date-fns';
+import { th } from 'date-fns/locale';
+
+interface LeaveData {
+  leaveNo: string;
+  fiscalYear: number;
+  teacher: {
+    title: string;
+    firstName: string;
+    lastName: string;
+    position: string | null;
+  };
+  type: string;
+  customTypeName?: string;
+  startDate: Date;
+  endDate: Date;
+  period?: 'morning' | 'afternoon' | null;
+  daysWorking: number;
+  reason: string;
+  contactAddress: string;
+  contactPhone?: string;
+  teacherSignatureUrl?: string | null;
+  approvedAt?: Date | null;
+  isApproved?: boolean | null;
+  approverNameSnapshot?: string | null;
+  approverPositionSnapshot?: string | null;
+  approverComment?: string | null;
+  reviewerNameSnapshot?: string | null;
+  reviewerPositionSnapshot?: string | null;
+  reviewerComment?: string | null;
+  directorNameSnapshot?: string | null;
+  directorPositionSnapshot?: string | null;
+  previousLeave?: {
+    startDate: Date;
+    endDate: Date;
+  } | null;
+  leaveDayStats: {
+    round1: {
+      sick: { times: number; days: number };
+      personal: { times: number; days: number };
+      maternity: { times: number; days: number };
+      religious: { times: number; days: number };
+    };
+    round2: {
+      sick: { times: number; days: number };
+      personal: { times: number; days: number };
+      maternity: { times: number; days: number };
+      religious: { times: number; days: number };
+    };
+  };
+}
+
+interface Settings {
+  schoolName: string;
+  schoolAddress: string;
+}
+
+type LeaveTypeKey = 'sick' | 'personal' | 'maternity' | 'religious';
+
+const LEAVE_TYPE_NAMES: Record<string, string> = {
+  sick: 'ลาป่วย',
+  personal: 'ลากิจส่วนตัว',
+  maternity: 'ลาคลอดบุตร',
+  religious: 'ลาอุปสมบท',
+};
+
+const LEAVE_TYPE_ORDER: LeaveTypeKey[] = ['sick', 'personal', 'maternity', 'religious'];
+
+function formatThaiDate(date: Date): string {
+  return format(date, 'd MMMM yyyy', { locale: th })
+    .replace(/\d{4}/, (year: string) => String(parseInt(year, 10) + 543));
+}
+
+function getLeaveTypeName(type: string, customTypeName?: string): string {
+  if (customTypeName) return customTypeName;
+  return LEAVE_TYPE_NAMES[type] || type;
+}
+
+function getPeriodText(period?: 'morning' | 'afternoon' | null): string {
+  if (!period) return '';
+  return period === 'morning' ? ' (ครึ่งเช้า)' : ' (ครึ่งบ่าย)';
+}
+
+function isRound1(date: Date): boolean {
+  const month = date.getMonth();
+  return month >= 9 || month <= 2;
+}
+
+function isRound2(date: Date): boolean {
+  return !isRound1(date);
+}
+
+function checkbox(checked: boolean): string {
+  return `<span class="checkbox ${checked ? 'checked' : ''}"></span>`;
+}
+
+function dots(value: string, minWidth = 50): string {
+  return `<span class="dots" style="min-width:${minWidth}px;">${value}</span>`;
+}
+
+export function generateLeaveFormHTML(
+  leave: LeaveData,
+  settings: Settings,
+  qrCodeDataUrl?: string
+): string {
+  const leaveType = getLeaveTypeName(leave.type, leave.customTypeName);
+  const periodText = getPeriodText(leave.period);
+  const submittedDate = formatThaiDate(new Date());
+  const startDateText = formatThaiDate(leave.startDate);
+  const endDateText = formatThaiDate(leave.endDate);
+
+  const previousLeaveStartText = leave.previousLeave ? formatThaiDate(leave.previousLeave.startDate) : '';
+  const previousLeaveEndText = leave.previousLeave ? formatThaiDate(leave.previousLeave.endDate) : '';
+  const previousLeaveDays = leave.previousLeave
+    ? differenceInCalendarDays(leave.previousLeave.endDate, leave.previousLeave.startDate) + 1
+    : null;
+
+  const currentRound = isRound1(leave.startDate) ? 'round1' : 'round2';
+
+  const statsRows = LEAVE_TYPE_ORDER.map((key) => {
+    const roundStats = leave.leaveDayStats[currentRound][key] || { times: 0, days: 0 };
+    const before = {
+      times: roundStats.times,
+      days: roundStats.days
+    };
+    const isThisType = leave.type === key;
+    const thisTimeTimes = isThisType ? 1 : 0;
+    const thisTimeDays = isThisType ? leave.daysWorking : 0;
+    const totalTimes = before.times + thisTimeTimes;
+    const totalDays = before.days + thisTimeDays;
+    return `
+      <tr>
+        <td class="stats-label">${LEAVE_TYPE_NAMES[key]}</td>
+        <td>${thisTimeTimes || ''}</td>
+        <td>${thisTimeDays || ''}</td>
+        <td>${before.times || ''}</td>
+        <td>${before.days || ''}</td>
+        <td>${totalTimes || ''}</td>
+        <td>${totalDays || ''}</td>
+      </tr>`;
+  }).join('');
+
+  const approverComment = leave.approverComment || '';
+  const reviewerName = leave.reviewerNameSnapshot || '';
+  const reviewerPosition = leave.reviewerPositionSnapshot || '';
+  const directorName = leave.directorNameSnapshot || '';
+  const directorPosition = leave.directorPositionSnapshot || '';
+
+  return `
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ใบลา ${leave.leaveNo}</title>
+  <style>
+    @font-face {
+      font-family: 'TH Sarabun New';
+      src: url('data:font/truetype;charset=utf-8;base64,...') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'TH Sarabun New';
+      src: url('data:font/truetype;charset=utf-8;base64,...') format('truetype');
+      font-weight: bold;
+      font-style: normal;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    @page {
+      margin: 0.4cm 0.6cm;
+    }
+
+    body {
+      font-family: 'TH Sarabun New', sans-serif;
+      font-size: 16pt;
+      line-height: 1.05;
+      padding: 0;
+      color: #000;
+      background: #fff;
+      position: relative;
+    }
+
+    .leave-no {
+      position: absolute;
+      top: 0cm;
+      right: 0cm;
+      font-size: 12pt;
+      color: #444;
+    }
+
+    .title {
+      text-align: center;
+      font-size: 18pt;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .right-line {
+      text-align: right;
+      margin-bottom: 2px;
+    }
+
+    .field {
+      margin-bottom: 2px;
+    }
+
+    .indent {
+      margin-left: 50px;
+    }
+
+    .dots {
+      border-bottom: 1px dotted #000;
+      display: inline-block;
+      min-width: 50px;
+      padding: 0 4px 0px 4px;
+      text-align: center;
+      vertical-align: baseline;
+      line-height: 0.85;
+    }
+
+    .checkbox {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 1px solid #000;
+      margin-right: 4px;
+      vertical-align: middle;
+      position: relative;
+    }
+
+    .checkbox.checked::after {
+      content: '✓';
+      position: absolute;
+      top: -4px;
+      left: 1px;
+      font-size: 13pt;
+      font-weight: bold;
+    }
+
+    .leave-type-list .option {
+      display: block;
+      margin: 1px 0 1px 45px;
+    }
+
+    .two-col {
+      display: flex;
+      gap: 16px;
+      margin-top: 5px;
+      align-items: flex-start;
+    }
+
+    .col-left {
+      flex: 0 0 50%;
+    }
+
+    .col-right {
+      flex: 1;
+    }
+
+    .fiscal-box {
+      margin-bottom: 4px;
+    }
+
+    .fiscal-box .option {
+      display: block;
+      margin: 1px 0;
+    }
+
+    .stats-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5pt;
+      margin-bottom: 4px;
+    }
+
+    .stats-table th,
+    .stats-table td {
+      border: 1px solid #000;
+      padding: 2px 4px;
+      text-align: center;
+    }
+
+    .stats-table th {
+      font-weight: normal;
+    }
+
+    .stats-label {
+      text-align: left !important;
+      padding-left: 8px !important;
+    }
+
+    .signature-block {
+      text-align: center;
+      margin-bottom: 5px;
+    }
+
+    .signature-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin: 4px auto 2px auto;
+    }
+
+    .signature-label {
+      font-size: 16pt;
+    }
+
+    .signature-image {
+      max-width: 200px;
+      max-height: 80px;
+    }
+
+    .opinion-box {
+      margin-bottom: 4px;
+    }
+
+    .opinion-box .heading {
+      font-weight: bold;
+      margin-bottom: 2px;
+    }
+
+    .opinion-line {
+      border-bottom: 1px dotted #000;
+      height: 14px;
+      margin-bottom: 1px;
+    }
+
+    .personnel-block {
+      margin-top: 1px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    .personnel-block .heading {
+      font-weight: bold;
+      margin-bottom: 1px;
+    }
+
+    .personnel-block .opinion-line {
+      height: 11px;
+      margin-bottom: 1px;
+    }
+
+    .personnel-block .signature-block {
+      margin-top: 3px;
+      margin-bottom: 0;
+    }
+
+    .approve-row {
+      margin-top: 4px;
+      margin-bottom: 4px;
+      text-align: center;
+    }
+
+    .approve-row .option {
+      margin-right: 30px;
+    }
+
+    .sign-line {
+      margin-top: 10px;
+      text-align: left;
+    }
+
+    @media print {
+      body {
+        padding: 0.15cm 0.4cm;
+      }
+    }
+  </style>
+</head>
+<body>
+  ${qrCodeDataUrl ? `<div class="qr-code"><img src="${qrCodeDataUrl}" alt="QR Code" /></div>` : ''}
+  <div class="leave-no">เลขที่ ${leave.leaveNo}</div>
+
+  <div class="title">แบบใบลา ลาป่วย ลากิจส่วนตัว ลาคลอด ลาอุปสมบท</div>
+
+  <div class="right-line">เขียนที่ ${dots(settings.schoolName,180)}</div>
+  <div class="right-line">วันที่ ${dots(submittedDate, 180)}</div>
+
+  <div class="field">เรื่อง  ${leaveType}</div>
+  <div class="field">เรียน ผู้อำนวยการ${settings.schoolName}</div>
+
+  <div class="field indent">
+    ข้าพเจ้า ${dots(`${leave.teacher.title}${leave.teacher.firstName} ${leave.teacher.lastName}`, 240)}
+    ตำแหน่ง ${dots(leave.teacher.position || '', 200)}
+  </div>
+  <div class="field">
+    สังกัด ${dots(settings.schoolName, 300)}  ขออนุญาตลา
+  </div>
+
+  <div class="leave-type-list">
+    <div class="option">
+      ${checkbox(leave.type === 'sick')} ลาป่วย เนื่องจาก ${dots(leave.type === 'sick' ? leave.reason : '', 380)}
+    </div>
+    <div class="option">
+      ${checkbox(leave.type === 'personal')} ลากิจส่วนตัว เนื่องจาก ${dots(leave.type === 'personal' ? leave.reason : '', 350)}
+    </div>
+    <div class="option">
+      ${checkbox(leave.type === 'maternity')} ลาคลอดบุตร
+    </div>
+    <div class="option">
+      ${checkbox(leave.type === 'religious')} ลาอุปสมบท
+    </div>
+  </div>
+
+  <div class="field">
+    ตั้งแต่วันที่ ${dots(startDateText, 190)}
+    ถึงวันที่ ${dots(endDateText, 150)}
+    มีกำหนด ${dots(String(leave.daysWorking), 40)} วัน${periodText}
+  </div>
+
+  <div class="field">
+    ข้าพเจ้าได้
+    ${checkbox(leave.type === 'sick')} ลาป่วย
+    ${checkbox(leave.type === 'personal')} ลากิจส่วนตัว
+    ${checkbox(leave.type === 'maternity')} คลอดบุตร
+    ${checkbox(leave.type === 'religious')} ลาอุปสมบท
+  </div>
+
+  <div class="field">
+    ครั้งสุดท้ายเมื่อวันที่ ${dots(previousLeaveStartText, 140)}
+    ถึงวันที่ ${dots(previousLeaveEndText, 140)}
+    มีกำหนด ${dots(previousLeaveDays !== null ? String(previousLeaveDays) : '', 40)} วัน
+  </div>
+
+  <div class="field">
+    ในระหว่างลาจะติดต่อข้าพเจ้าได้ที่ ${dots(leave.contactAddress, 220)}
+    เบอร์โทร ${dots(leave.contactPhone || '', 130)}
+  </div>
+
+  <div class="two-col">
+    <div class="col-left">
+      <div class="fiscal-box">
+        <div class="heading">ปีงบประมาณ ${leave.fiscalYear}</div>
+        <div class="option">${checkbox(isRound1(leave.startDate))} 1 ต.ค. – 31 มี.ค.</div>
+        <div class="option">${checkbox(isRound2(leave.startDate))} 1 เม.ย. – 30 ก.ย.</div>
+      </div>
+
+      <table class="stats-table">
+        <tr>
+          <th rowspan="2">ประเภท</th>
+          <th colspan="2">ลาครั้งนี้</th>
+          <th colspan="2">ลาครั้งที่แล้ว</th>
+          <th colspan="2">รวม</th>
+        </tr>
+        <tr>
+          <th>ครั้ง</th><th>วัน</th>
+          <th>ครั้ง</th><th>วัน</th>
+          <th>ครั้ง</th><th>วัน</th>
+        </tr>
+        ${statsRows}
+      </table>
+
+      <!-- ความเห็นฝ่ายบุคคล: กล่องนี้แยก class ตัวเอง ระยะห่างแคบเป็นพิเศษ และห้ามแตกหน้ากลางกล่อง -->
+      <div class="personnel-block">
+        <div class="opinion-box" style="margin-bottom: 2px;">
+          <div class="heading">ความเห็นของหัวหน้าฝ่ายบุคคล</div>
+          <div class="opinion-line">${leave.reviewerComment || ''}</div>
+          <div class="opinion-line"></div>
+        </div>
+
+        <!-- ลายเซ็นหัวหน้าฝ่ายบุคคล -->
+        <div class="signature-block">
+          <div style="text-align: left;">ลงชื่อ</div>
+          <div style="text-align: center;">( ${dots(reviewerName, 160)} )</div>
+          <div style="text-align: center;">ตำแหน่ง ${reviewerPosition || 'ครู'}</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="col-right">
+      <div class="signature-block">
+        <div>ขอแสดงความนับถือ</div>
+        ${leave.teacherSignatureUrl
+          ? `<div class="signature-wrapper">
+              <span class="signature-label">ลงชื่อ</span>
+              <img src="${leave.teacherSignatureUrl}" alt="ลายเซ็นครู" class="signature-image" />
+            </div>`
+          : '<div class="sign-line">ลงชื่อ</div>'
+        }
+        <div>( ${dots(`${leave.teacher.title}${leave.teacher.firstName} ${leave.teacher.lastName}`, 200)} )</div>
+      </div>
+
+      <div class="opinion-box">
+        <div class="heading">ความเห็นผู้บังคับบัญชา</div>
+        <div class="opinion-line">${approverComment}</div>
+        <div class="opinion-line"></div>
+        <div class="opinion-line"></div>
+        <div class="approve-row">
+          <span class="option">${checkbox(false)} อนุญาต</span>
+          <span class="option">${checkbox(false)} ไม่อนุญาต</span>
+        </div>
+      </div>
+
+      <!-- ลายเซ็นผู้อำนวยการ -->
+      <div class="signature-block" style="margin-top: 5px;">
+        <div style="text-align: left;">ลงชื่อ</div>
+        <div style="text-align: center;">( ${dots(directorName, 160)} )</div>
+        <div style="text-align: center;">ตำแหน่ง ${directorPosition || `ผู้อำนวยการ${settings.schoolName}`}</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+}
