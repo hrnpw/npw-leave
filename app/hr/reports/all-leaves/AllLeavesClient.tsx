@@ -151,6 +151,10 @@ export default function AllLeavesClient({ hrUser }: { hrUser: HrUser }) {
   const handleExport = async (format: 'excel' | 'csv') => {
     try {
       setExporting(true);
+
+      // Dynamic import for better code splitting
+      const { downloadExcelFile } = await import('@/lib/excelExport');
+
       const params = new URLSearchParams();
 
       if (filters.fiscalYear) params.append('year', filters.fiscalYear);
@@ -162,18 +166,8 @@ export default function AllLeavesClient({ hrUser }: { hrUser: HrUser }) {
       if (filters.dateTo) params.append('to', filters.dateTo);
       params.append('format', format);
 
-      const res = await fetch(`/api/hr/reports/all-leaves?${params}`);
-      if (!res.ok) throw new Error('Export failed');
-
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `all-leaves-${Date.now()}.${format === 'excel' ? 'xlsx' : 'csv'}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      const filename = `all-leaves-${Date.now()}.${format === 'excel' ? 'xlsx' : 'csv'}`;
+      await downloadExcelFile(`/api/hr/reports/all-leaves?${params}`, filename);
 
       toast.success('ดาวน์โหลดสำเร็จ');
     } catch (error) {

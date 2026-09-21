@@ -75,7 +75,19 @@ export async function GET(request: NextRequest) {
     const [leaves, total] = await Promise.all([
       prisma.leave.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          leaveNo: true,
+          fiscalYear: true,
+          type: true,
+          customTypeName: true,
+          startDate: true,
+          endDate: true,
+          halfDayPeriod: true,
+          daysWorking: true,
+          status: true,
+          approverNameSnapshot: true,
+          createdAt: true,
           teacher: {
             select: {
               title: true,

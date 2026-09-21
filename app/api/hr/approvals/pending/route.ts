@@ -28,7 +28,24 @@ export async function GET(request: NextRequest) {
         },
         skip,
         take: limit,
-        include: {
+        select: {
+          id: true,
+          leaveNo: true,
+          fiscalYear: true,
+          round: true,
+          type: true,
+          customTypeName: true,
+          startDate: true,
+          endDate: true,
+          isHalfDay: true,
+          halfDayPeriod: true,
+          daysWorking: true,
+          daysCalendar: true,
+          reason: true,
+          contactAddress: true,
+          submittedByType: true,
+          teacherId: true,
+          createdAt: true,
           teacher: {
             select: {
               teacherCode: true,

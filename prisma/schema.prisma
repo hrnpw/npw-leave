@@ -26,6 +26,8 @@ model Teacher {
 
   @@index([citizenId])
   @@index([isActive])
+  @@index([department])
+  @@index([teacherCode, isActive])
   @@map("teachers")
 }
 
@@ -94,6 +96,11 @@ model Leave {
   @@index([startDate, endDate])
   @@index([createdAt])
   @@index([submittedByHrId])
+  @@index([fiscalYear, status])
+  @@index([fiscalYear, round])
+  @@index([teacherId, status, createdAt])
+  @@index([status, printedAt])
+  @@index([type])
   @@map("leaves")
 }
 
