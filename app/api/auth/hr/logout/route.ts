@@ -6,7 +6,19 @@ export async function POST() {
     const session = await getHrSession();
     session.destroy();
 
-    return NextResponse.json({ success: true });
+    // Create response with explicit cookie clearing for Safari
+    const response = NextResponse.json({ success: true });
+
+    // Clear the session cookie explicitly
+    response.cookies.set('hr_session', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+      path: '/',
+    });
+
+    return response;
   } catch (error) {
     console.error('HR logout error:', error);
     return NextResponse.json(
