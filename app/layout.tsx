@@ -15,7 +15,7 @@ const kanit = Kanit({
 });
 
 export const metadata: Metadata = {
-  title: 'แจ้งลาออนไลน์ | โรงเรียนบ้านเนินพลับหวาน',
+  title: 'แจ้งลา | โรงเรียนบ้านเนินพลับหวาน',
   description: 'ระบบแจ้งลาออนไลน์สำหรับโรงเรียนบ้านเนินพลับหวาน',
   manifest: '/manifest.json',
   appleWebApp: {
