@@ -1,5 +1,6 @@
 import { getHrSession } from '@/lib/getSession';
 import { redirect } from 'next/navigation';
+import { isSessionExpired } from '@/lib/session';
 import { Metadata } from 'next';
 import LeaveDetailClient from './LeaveDetailClient';
 
@@ -17,7 +18,12 @@ interface PageProps {
 export default async function LeaveDetailPage({ params }: PageProps) {
   const session = await getHrSession();
 
-  if (!session.id) {
+  if (!session.id || !session.createdAt) {
+    redirect('/hr/login');
+  }
+
+  if (isSessionExpired(session.createdAt)) {
+    session.destroy();
     redirect('/hr/login');
   }
 
@@ -27,7 +33,7 @@ export default async function LeaveDetailPage({ params }: PageProps) {
     <LeaveDetailClient
       leaveId={id}
       hrUser={{
-        id: session.id!,
+        id: session.id,
         firstName: session.firstName!,
         lastName: session.lastName!,
         role: session.role!,
