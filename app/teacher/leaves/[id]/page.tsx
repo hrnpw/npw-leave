@@ -1,6 +1,5 @@
 import { getTeacherSession } from '@/lib/getSession';
 import { redirect } from 'next/navigation';
-import { isSessionExpired } from '@/lib/session';
 import LeaveDetailClient from './LeaveDetailClient';
 
 export default async function TeacherLeaveDetailPage({
@@ -11,12 +10,10 @@ export default async function TeacherLeaveDetailPage({
   const session = await getTeacherSession();
   const { id } = await params;
 
-  if (!session.id || !session.createdAt) {
-    redirect('/verify');
-  }
+  console.log('[TeacherLeaveDetail] Session:', session);
 
-  if (isSessionExpired(session.createdAt)) {
-    session.destroy();
+  if (!session.id) {
+    console.log('[TeacherLeaveDetail] No session.id, redirecting to /verify');
     redirect('/verify');
   }
 
@@ -24,7 +21,7 @@ export default async function TeacherLeaveDetailPage({
     <LeaveDetailClient
       leaveId={id}
       teacher={{
-        id: session.id,
+        id: session.id!,
         teacherCode: session.teacherCode!,
         firstName: session.firstName!,
         lastName: session.lastName!,
