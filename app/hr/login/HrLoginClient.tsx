@@ -39,6 +39,9 @@ export default function HrLoginClient() {
     }
 
     try {
+      // Clear old cookie before login to prevent stale session
+      document.cookie = 'hr_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+
       const response = await fetch('/api/auth/hr/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
