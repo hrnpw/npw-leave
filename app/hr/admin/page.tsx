@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getHrSession } from '@/lib/getSession';
+import { isSessionExpired } from '@/lib/session';
 import AdminClient from './AdminClient';
 
 export const metadata = {
@@ -10,7 +11,12 @@ export const metadata = {
 export default async function AdminPage() {
   const session = await getHrSession();
 
-  if (!session.id) {
+  if (!session.id || !session.createdAt) {
+    redirect('/hr/login');
+  }
+
+  if (isSessionExpired(session.createdAt)) {
+    session.destroy();
     redirect('/hr/login');
   }
 
@@ -21,7 +27,7 @@ export default async function AdminPage() {
   return (
     <AdminClient
       hrUser={{
-        id: session.id!,
+        id: session.id,
         firstName: session.firstName!,
         lastName: session.lastName!,
         role: session.role!,

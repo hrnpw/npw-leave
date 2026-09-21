@@ -1,22 +1,7 @@
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
+import { getTeacherSession } from '@/lib/getSession';
+import { isSessionExpired } from '@/lib/session';
 import TeacherLeaveDetailClient from './TeacherLeaveDetailClient';
-
-async function getTeacherSession() {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get('teacher_session');
-
-  if (!sessionCookie) {
-    return null;
-  }
-
-  try {
-    const session = JSON.parse(sessionCookie.value);
-    return session;
-  } catch {
-    return null;
-  }
-}
 
 export default async function TeacherLeaveDetailPage({
   params,
@@ -25,7 +10,12 @@ export default async function TeacherLeaveDetailPage({
 }) {
   const session = await getTeacherSession();
 
-  if (!session) {
+  if (!session.id || !session.createdAt) {
+    redirect('/verify');
+  }
+
+  if (isSessionExpired(session.createdAt)) {
+    session.destroy();
     redirect('/verify');
   }
 
@@ -35,10 +25,10 @@ export default async function TeacherLeaveDetailPage({
     <TeacherLeaveDetailClient
       leaveId={id}
       teacher={{
-        id: session.teacherId,
-        teacherCode: session.teacherCode,
-        firstName: session.firstName,
-        lastName: session.lastName,
+        id: session.id,
+        teacherCode: session.teacherCode!,
+        firstName: session.firstName!,
+        lastName: session.lastName!,
       }}
     />
   );
