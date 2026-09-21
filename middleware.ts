@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { SESSION_CONFIG } from './lib/session-config';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Teacher routes - check cookie exists
   if (pathname.startsWith('/teacher')) {
-    const teacherSession = request.cookies.get('teacher_session');
+    const teacherSession = request.cookies.get(SESSION_CONFIG.TEACHER_COOKIE_NAME);
 
     if (!teacherSession) {
       const url = request.nextUrl.clone();
@@ -20,7 +21,7 @@ export async function middleware(request: NextRequest) {
 
   // Super Admin routes - check cookie exists and will be validated in page
   if (pathname.startsWith('/hr/admin')) {
-    const hrSession = request.cookies.get('hr_session');
+    const hrSession = request.cookies.get(SESSION_CONFIG.HR_COOKIE_NAME);
 
     if (!hrSession) {
       const url = request.nextUrl.clone();
@@ -35,7 +36,7 @@ export async function middleware(request: NextRequest) {
 
   // HR routes require HR session
   if (pathname.startsWith('/hr') && pathname !== '/hr/login') {
-    const hrSession = request.cookies.get('hr_session');
+    const hrSession = request.cookies.get(SESSION_CONFIG.HR_COOKIE_NAME);
 
     if (!hrSession) {
       const url = request.nextUrl.clone();
