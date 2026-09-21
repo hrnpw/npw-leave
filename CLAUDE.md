@@ -2,6 +2,7 @@
 
 ระบบยื่น/อนุมัติใบลาสำหรับโรงเรียน (Mobile Web App, Next.js + PWA)
 
+@AUTH_DEBUG.md
 ## Code 
 
 

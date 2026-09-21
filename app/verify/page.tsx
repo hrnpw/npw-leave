@@ -113,7 +113,21 @@ function VerifyForm() {
       toast.success('ยืนยันตัวตนสำเร็จ', {
         description: `ยินดีต้อนรับ คุณ${data.teacher?.firstName || ''}`
       });
-      router.push(returnUrl);
+
+      // Verify session before navigation to prevent race condition
+      try {
+        const verifyRes = await fetch('/api/auth/teacher/extend', { method: 'POST' });
+        if (verifyRes.ok) {
+          // Session verified, safe to use client-side navigation
+          router.push(returnUrl);
+        } else {
+          // Session not ready, use full page reload as fallback
+          window.location.href = returnUrl;
+        }
+      } catch {
+        // Network error, use full page reload as fallback
+        window.location.href = returnUrl;
+      }
     } catch (err: any) {
       let errorMsg = 'ยืนยันตัวตนไม่สำเร็จ';
       let errorDesc = err.message;
