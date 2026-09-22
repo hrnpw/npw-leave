@@ -77,15 +77,15 @@ export async function GET() {
 
     // Count teachers exceeding quota using SQL aggregation
     const exceedingTeachers = await prisma.$queryRaw<Array<{ count: bigint }>>`
-      SELECT COUNT(DISTINCT "teacherId") as count
+      SELECT COUNT(DISTINCT "teacher_id") as count
       FROM (
-        SELECT "teacherId", SUM("daysCalendar") as total
-        FROM "Leave"
+        SELECT "teacher_id", SUM("days_calendar") as total
+        FROM "leaves"
         WHERE "status" = 'approved'
           AND "type" IN ('sick', 'personal')
-          AND "createdAt" >= ${systemStartDate}
-        GROUP BY "teacherId"
-        HAVING SUM("daysCalendar") > ${quotaSickPersonal}
+          AND "created_at" >= ${systemStartDate}
+        GROUP BY "teacher_id"
+        HAVING SUM("days_calendar") > ${quotaSickPersonal}
       ) AS exceeding
     `;
 
