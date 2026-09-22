@@ -80,7 +80,7 @@ export async function GET() {
       SELECT COUNT(DISTINCT "teacherId") as count
       FROM (
         SELECT "teacherId", SUM("daysCalendar") as total
-        FROM "Leave"
+        FROM "leave"
         WHERE "status" = 'approved'
           AND "type" IN ('sick', 'personal')
           AND "createdAt" >= ${systemStartDate}
