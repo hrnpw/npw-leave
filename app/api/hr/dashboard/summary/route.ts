@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getHrSession } from '@/lib/getSession';
 import { prisma } from '@/lib/prisma';
+import { shortCacheHeaders } from '@/lib/cacheHeaders';
 
 export async function GET() {
   try {
@@ -74,28 +75,21 @@ export async function GET() {
     const quotaSickPersonal = settings?.quotaSickPersonal || 23;
     const systemStartDate = settings?.systemStartDate || new Date('2026-09-07');
 
-    // Get all teachers with their leave stats
-    const teachers = await prisma.teacher.findMany({
-      where: { isActive: true },
-      select: {
-        id: true,
-        leaves: {
-          where: {
-            status: 'approved',
-            type: { in: ['sick', 'personal'] },
-            createdAt: { gte: systemStartDate },
-          },
-          select: {
-            daysCalendar: true,
-          },
-        },
-      },
-    });
+    // Count teachers exceeding quota using SQL aggregation
+    const exceedingTeachers = await prisma.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(DISTINCT "teacherId") as count
+      FROM (
+        SELECT "teacherId", SUM("daysCalendar") as total
+        FROM "Leave"
+        WHERE "status" = 'approved'
+          AND "type" IN ('sick', 'personal')
+          AND "createdAt" >= ${systemStartDate}
+        GROUP BY "teacherId"
+        HAVING SUM("daysCalendar") > ${quotaSickPersonal}
+      ) AS exceeding
+    `;
 
-    const exceedingCount = teachers.filter((teacher) => {
-      const totalDays = teacher.leaves.reduce((sum, leave) => sum + leave.daysCalendar, 0);
-      return totalDays > quotaSickPersonal;
-    }).length;
+    const exceedingCount = Number(exceedingTeachers[0]?.count || 0);
 
     const attendingToday = totalTeachers - leavesTodayFull;
 
@@ -106,6 +100,8 @@ export async function GET() {
       leavesTomorrow,
       pendingCount,
       exceedingCount,
+    }, {
+      headers: shortCacheHeaders,
     });
   } catch (error) {
     console.error('HR dashboard summary error:', error);

@@ -101,6 +101,9 @@ model Leave {
   @@index([teacherId, status, createdAt])
   @@index([status, printedAt])
   @@index([type])
+  @@index([status, startDate, endDate])
+  @@index([teacherId, type, status, createdAt])
+  @@index([type, status])
   @@map("leaves")
 }
 
@@ -115,6 +118,7 @@ model LeaveDay {
 
   @@index([leaveId])
   @@index([date])
+  @@index([date, isWorkingDay])
   @@map("leave_days")
 }
 

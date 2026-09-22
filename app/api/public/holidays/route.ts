@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { longCacheHeaders } from '@/lib/cacheHeaders';
 
 /**
  * GET /api/public/holidays
@@ -56,6 +57,8 @@ export async function GET(request: NextRequest) {
         name: h.name,
         date: h.date.toISOString(),
       })),
+    }, {
+      headers: longCacheHeaders,
     });
   } catch (error) {
     console.error('Error fetching holidays:', error);

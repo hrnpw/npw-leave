@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       endDate = new Date(ceYear, 8, 30); // Sep 30
     }
 
-    // Get all active teachers
+    // Get all active teachers with their leaves in one query
     const teachers = await prisma.teacher.findMany({
       where: { isActive: true },
       select: {
@@ -53,33 +53,30 @@ export async function GET(request: NextRequest) {
         firstName: true,
         lastName: true,
         department: true,
+        leaves: {
+          where: {
+            status: 'approved',
+            startDate: { lte: endDate },
+            endDate: { gte: startDate },
+          },
+          select: {
+            id: true,
+            leaveNo: true,
+            type: true,
+            customTypeName: true,
+            startDate: true,
+            endDate: true,
+            daysWorking: true,
+            isHalfDay: true,
+          },
+        },
       },
       orderBy: [{ teacherCode: 'asc' }],
     });
 
-    // Get all approved leaves in the period
-    const leaves = await prisma.leave.findMany({
-      where: {
-        status: 'approved',
-        startDate: { lte: endDate },
-        endDate: { gte: startDate },
-      },
-      select: {
-        id: true,
-        leaveNo: true,
-        teacherId: true,
-        type: true,
-        customTypeName: true,
-        startDate: true,
-        endDate: true,
-        daysWorking: true,
-        isHalfDay: true,
-      },
-    });
-
-    // Calculate leave stats per teacher
+    // Calculate stats using the already-loaded leaves
     const teacherStats = teachers.map((teacher) => {
-      const teacherLeaves = leaves.filter((l) => l.teacherId === teacher.id);
+      const teacherLeaves = teacher.leaves;
 
       const sickLeaves = teacherLeaves.filter((l) => l.type === 'sick');
       const sickCount = sickLeaves.length;

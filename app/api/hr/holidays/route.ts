@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getHrSession } from '@/lib/getSession';
 import { prisma } from '@/lib/prisma';
+import { longCacheHeaders } from '@/lib/cacheHeaders';
 
 export async function GET(req: NextRequest) {
   try {
@@ -40,6 +41,8 @@ export async function GET(req: NextRequest) {
         name: h.name,
         createdAt: h.createdAt.toISOString(),
       })),
+    }, {
+      headers: longCacheHeaders,
     });
   } catch (error) {
     console.error('Failed to fetch holidays:', error);
