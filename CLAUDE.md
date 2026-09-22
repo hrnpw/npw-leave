@@ -2,7 +2,8 @@
 
 ระบบยื่น/อนุมัติใบลาสำหรับโรงเรียน (Mobile Web App, Next.js + PWA)
 
-แก้บัค
+- Optimize performance
+- UI dev(Visual Design and Color)
 ## Code 
 
 

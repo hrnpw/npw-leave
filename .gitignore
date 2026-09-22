@@ -48,6 +48,7 @@ VERCEL_ENV_SETUP.md
 # backup folders
 lib - backup*/
 *backup*/
+Docs/
 
 # IDE
 .vscode/
