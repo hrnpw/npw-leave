@@ -1,7 +1,24 @@
 import { getHrSession, getTeacherSession } from './getSession';
-import { isSessionExpired } from './session';
+import { isSessionExpired, HrSession, TeacherSession } from './session';
+import { IronSession } from 'iron-session';
 
-export async function validateHrSession() {
+type ValidHrSession = {
+  valid: true;
+  session: IronSession<HrSession>;
+};
+
+type InvalidSession = {
+  valid: false;
+  reason: 'no_session' | 'expired' | 'error';
+  session?: undefined;
+};
+
+type ValidTeacherSession = {
+  valid: true;
+  session: IronSession<TeacherSession>;
+};
+
+export async function validateHrSession(): Promise<ValidHrSession | InvalidSession> {
   try {
     const session = await getHrSession();
 
@@ -19,7 +36,7 @@ export async function validateHrSession() {
   }
 }
 
-export async function validateTeacherSession() {
+export async function validateTeacherSession(): Promise<ValidTeacherSession | InvalidSession> {
   try {
     const session = await getTeacherSession();
 

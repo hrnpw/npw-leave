@@ -865,7 +865,7 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
           {/* Selected Day Detail Modal */}
           {selectedDay && (
             <div
-              className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4"
               onClick={() => setSelectedDay(null)}
             >
               <motion.div

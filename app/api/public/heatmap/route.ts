@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { startOfMonth, endOfMonth, eachDayOfInterval, format } from 'date-fns';
 
 // GET /api/public/heatmap?year=2026&month=9
-// Returns: { 'YYYY-MM-DD': count }
+// Returns: array of { date, count, leaves: [...] }
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -17,9 +18,12 @@ export async function GET(request: Request) {
       );
     }
 
-    // Create UTC dates for the first and last day of the month
-    const monthStart = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
-    const monthEnd = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999)); // Last day of month
+    const targetDate = new Date(year, month - 1, 1);
+    const monthStart = startOfMonth(targetDate);
+    const monthEnd = endOfMonth(targetDate);
+
+    // Get all days in month
+    const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
     // Get all approved leaves that overlap with this month
     const leaves = await prisma.leave.findMany({
@@ -28,16 +32,21 @@ export async function GET(request: Request) {
         startDate: { lte: monthEnd },
         endDate: { gte: monthStart }
       },
-      select: {
-        id: true,
-        startDate: true,
-        endDate: true,
-        isHalfDay: true
+      include: {
+        teacher: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            teacherCode: true,
+            department: true,
+          }
+        }
       }
     });
 
-    // Count leaves per day
-    const heatmapData: Record<string, number> = {};
+    // Build a map: date string -> leaves on that date
+    const leavesByDate = new Map<string, typeof leaves>();
 
     for (const leave of leaves) {
       const leaveStart = leave.startDate > monthStart ? leave.startDate : monthStart;
@@ -46,17 +55,38 @@ export async function GET(request: Request) {
       // Generate all dates in the leave range
       const currentDate = new Date(leaveStart);
       while (currentDate <= leaveEnd) {
-        const dateKey = currentDate.toISOString().split('T')[0]; // 'YYYY-MM-DD'
-        heatmapData[dateKey] = (heatmapData[dateKey] || 0) + (leave.isHalfDay ? 0.5 : 1);
+        const dateKey = format(currentDate, 'yyyy-MM-dd');
+        const existing = leavesByDate.get(dateKey) || [];
+        if (!existing.find(l => l.id === leave.id)) {
+          existing.push(leave);
+        }
+        leavesByDate.set(dateKey, existing);
 
         // Move to next day
-        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+        currentDate.setDate(currentDate.getDate() + 1);
       }
     }
 
-    // Round half-day counts
-    Object.keys(heatmapData).forEach(key => {
-      heatmapData[key] = Math.ceil(heatmapData[key]);
+    // Build heatmap response
+    const heatmapData = daysInMonth.map((day) => {
+      const dateKey = format(day, 'yyyy-MM-dd');
+      const leavesOnDay = leavesByDate.get(dateKey) || [];
+
+      return {
+        date: dateKey,
+        count: leavesOnDay.length,
+        leaves: leavesOnDay.map(leave => ({
+          id: leave.id,
+          firstName: leave.teacher.firstName,
+          lastName: leave.teacher.lastName,
+          teacherCode: leave.teacher.teacherCode,
+          department: leave.teacher.department,
+          type: leave.type,
+          customTypeName: leave.customTypeName,
+          isHalfDay: leave.isHalfDay,
+          halfDayPeriod: leave.halfDayPeriod,
+        })),
+      };
     });
 
     return NextResponse.json(heatmapData, {

@@ -48,9 +48,15 @@ interface DayLeave {
   halfDayPeriod?: HalfDayPeriod;
 }
 
+interface HeatmapDay {
+  date: string;
+  count: number;
+  leaves: DayLeave[];
+}
+
 export default function HomePage() {
   const [summary, setSummary] = useState<PublicSummary | null>(null);
-  const [heatmapData, setHeatmapData] = useState<Record<string, number>>();
+  const [heatmapData, setHeatmapData] = useState<HeatmapDay[]>([]);
   const [holidays, setHolidays] = useState<Array<{ date: string; name: string }>>([]);
   const [currentHeatmapDate, setCurrentHeatmapDate] = useState(new Date());
   const [loading, setLoading] = useState(true);
@@ -59,7 +65,6 @@ export default function HomePage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedDayLeaves, setSelectedDayLeaves] = useState<DayLeave[]>([]);
-  const [loadingDayLeaves, setLoadingDayLeaves] = useState(false);
   const [pullStartY, setPullStartY] = useState(0);
   const [pullStartX, setPullStartX] = useState(0);
   const [pullDistance, setPullDistance] = useState(0);
@@ -118,7 +123,7 @@ export default function HomePage() {
       const year = date.getFullYear();
       const month = date.getMonth() + 1;
 
-      // Fetch heatmap data
+      // Fetch heatmap data (now includes leaves array)
       const heatmapResponse = await fetch(
         `/api/public/heatmap?year=${year}&month=${month}`
       );
@@ -144,32 +149,11 @@ export default function HomePage() {
     setCurrentHeatmapDate(newDate);
   };
 
-  // Prefetch data on hover
-  const handleDayHover = (date: string) => {
-    // Prefetch in background (browser will cache it)
-    fetch(`/api/public/leaves-by-date?date=${date}`).catch(() => {
-      // Silently fail - this is just a prefetch
-    });
-  };
-
-  const handleDayClick = async (date: string) => {
-    // Show modal immediately with empty state (optimistic UI)
+  const handleDayClick = (date: string) => {
+    // Find leaves from heatmap data (no need to fetch)
+    const dayData = heatmapData.find(d => d.date === date);
     setSelectedDate(date);
-    setSelectedDayLeaves([]);
-    setLoadingDayLeaves(false); // Don't show loading text
-
-    try {
-      const response = await fetch(`/api/public/leaves-by-date?date=${date}`);
-      if (response.ok) {
-        const data = await response.json();
-        setSelectedDayLeaves(data.leaves || []);
-      } else {
-        setSelectedDayLeaves([]);
-      }
-    } catch (err) {
-      console.error('Failed to fetch day leaves:', err);
-      setSelectedDayLeaves([]);
-    }
+    setSelectedDayLeaves(dayData?.leaves || []);
   };
 
   const closeModal = () => {
@@ -519,12 +503,11 @@ export default function HomePage() {
             ปฏิทินการลารายเดือน
           </h2>
           <HeatmapCalendar
-            data={heatmapData || {}}
+            data={heatmapData.reduce((acc, day) => ({ ...acc, [day.date]: day.count }), {})}
             currentDate={currentHeatmapDate}
             clickable={true}
             onMonthChange={handleHeatmapMonthChange}
             onDayClick={handleDayClick}
-            onDayHover={handleDayHover}
             holidays={holidays}
           />
         </motion.div>
@@ -533,7 +516,7 @@ export default function HomePage() {
         <AnimatePresence>
           {selectedDate && (
             <div
-              className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4"
               onClick={closeModal}
             >
               <motion.div
@@ -556,11 +539,7 @@ export default function HomePage() {
                 </button>
               </div>
 
-              {loadingDayLeaves ? (
-                <div className="text-center py-8 text-slate-500">
-                  กำลังโหลด...
-                </div>
-              ) : selectedDayLeaves.length === 0 ? (
+              {selectedDayLeaves.length === 0 ? (
                 <div className="text-center py-8 text-slate-500">
                   ไม่มีครูลาวันนี้
                 </div>
