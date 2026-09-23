@@ -144,9 +144,19 @@ export default function HomePage() {
     setCurrentHeatmapDate(newDate);
   };
 
+  // Prefetch data on hover
+  const handleDayHover = (date: string) => {
+    // Prefetch in background (browser will cache it)
+    fetch(`/api/public/leaves-by-date?date=${date}`).catch(() => {
+      // Silently fail - this is just a prefetch
+    });
+  };
+
   const handleDayClick = async (date: string) => {
+    // Show modal immediately with empty state (optimistic UI)
     setSelectedDate(date);
-    setLoadingDayLeaves(true);
+    setSelectedDayLeaves([]);
+    setLoadingDayLeaves(false); // Don't show loading text
 
     try {
       const response = await fetch(`/api/public/leaves-by-date?date=${date}`);
@@ -159,8 +169,6 @@ export default function HomePage() {
     } catch (err) {
       console.error('Failed to fetch day leaves:', err);
       setSelectedDayLeaves([]);
-    } finally {
-      setLoadingDayLeaves(false);
     }
   };
 
@@ -516,6 +524,7 @@ export default function HomePage() {
             clickable={true}
             onMonthChange={handleHeatmapMonthChange}
             onDayClick={handleDayClick}
+            onDayHover={handleDayHover}
             holidays={holidays}
           />
         </motion.div>

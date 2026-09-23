@@ -1,4 +1,4 @@
-import { getHrSession } from '@/lib/getSession';
+import { validateHrSession } from '@/lib/validateSession';
 import { redirect } from 'next/navigation';
 import { Metadata } from 'next';
 import HrMenuClient from './HrMenuClient';
@@ -9,11 +9,13 @@ export const metadata: Metadata = {
 };
 
 export default async function HrMenuPage() {
-  const session = await getHrSession();
+  const validation = await validateHrSession();
 
-  if (!session.id) {
+  if (!validation.valid) {
     redirect('/hr/login');
   }
+
+  const { session } = validation;
 
   return (
     <HrMenuClient

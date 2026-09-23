@@ -1,4 +1,4 @@
-import { getTeacherSession } from '@/lib/getSession';
+import { validateTeacherSession } from '@/lib/validateSession';
 import { redirect } from 'next/navigation';
 import { lazy, Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
@@ -21,15 +21,14 @@ export default async function TeacherLeaveDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await getTeacherSession();
+  const validation = await validateTeacherSession();
   const { id } = await params;
 
-  console.log('[TeacherLeaveDetail] Session:', session);
-
-  if (!session.id) {
-    console.log('[TeacherLeaveDetail] No session.id, redirecting to /verify');
+  if (!validation.valid) {
     redirect('/verify');
   }
+
+  const { session } = validation;
 
   return (
     <Suspense fallback={<LoadingFallback />}>

@@ -1,4 +1,4 @@
-import { getHrSession } from '@/lib/getSession';
+import { validateHrSession } from '@/lib/validateSession';
 import { redirect } from 'next/navigation';
 import { Metadata } from 'next';
 import LeaveDetailClient from './LeaveDetailClient';
@@ -15,12 +15,13 @@ interface PageProps {
 }
 
 export default async function LeaveDetailPage({ params }: PageProps) {
-  const session = await getHrSession();
+  const validation = await validateHrSession();
 
-  if (!session.id) {
+  if (!validation.valid) {
     redirect('/hr/login');
   }
 
+  const { session } = validation;
   const { id } = await params;
 
   return (

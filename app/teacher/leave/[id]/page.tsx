@@ -1,25 +1,9 @@
+import { validateTeacherSession } from '@/lib/validateSession';
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
 import { lazy, Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
 
 const TeacherLeaveDetailClient = lazy(() => import('./TeacherLeaveDetailClient'));
-
-async function getTeacherSession() {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get('teacher_session');
-
-  if (!sessionCookie) {
-    return null;
-  }
-
-  try {
-    const session = JSON.parse(sessionCookie.value);
-    return session;
-  } catch {
-    return null;
-  }
-}
 
 function LoadingFallback() {
   return (
@@ -37,12 +21,13 @@ export default async function TeacherLeaveDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await getTeacherSession();
+  const validation = await validateTeacherSession();
 
-  if (!session) {
+  if (!validation.valid) {
     redirect('/verify');
   }
 
+  const { session } = validation;
   const { id } = await params;
 
   return (
@@ -50,10 +35,10 @@ export default async function TeacherLeaveDetailPage({
       <TeacherLeaveDetailClient
         leaveId={id}
         teacher={{
-          id: session.teacherId,
-          teacherCode: session.teacherCode,
-          firstName: session.firstName,
-          lastName: session.lastName,
+          id: session.id!,
+          teacherCode: session.teacherCode!,
+          firstName: session.firstName!,
+          lastName: session.lastName!,
         }}
       />
     </Suspense>

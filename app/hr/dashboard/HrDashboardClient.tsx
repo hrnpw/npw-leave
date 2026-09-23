@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
@@ -106,48 +106,91 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
+  const [isHeatmapVisible, setIsHeatmapVisible] = useState(false);
+  const heatmapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetchSummary();
-    fetchLeavesToday();
-    fetchHeatmap();
+    fetchAllDashboardData();
   }, []);
 
   useEffect(() => {
     fetchHeatmap();
-  }, [selectedMonth]);
+  }, [selectedMonth, isHeatmapVisible]);
 
-  const fetchSummary = async () => {
+  // Intersection Observer for lazy loading heatmap
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !isHeatmapVisible) {
+            setIsHeatmapVisible(true);
+          }
+        });
+      },
+      { rootMargin: '100px' } // Start loading 100px before heatmap is visible
+    );
+
+    if (heatmapRef.current) {
+      observer.observe(heatmapRef.current);
+    }
+
+    return () => {
+      if (heatmapRef.current) {
+        observer.unobserve(heatmapRef.current);
+      }
+    };
+  }, [isHeatmapVisible]);
+
+  const fetchAllDashboardData = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/hr/dashboard/summary');
+      setLoadingLeaves(true);
+
+      const year = selectedMonth.getFullYear();
+      const month = selectedMonth.getMonth() + 1;
+
+      // Fetch all dashboard data in a single API call
+      const response = await fetch(`/api/hr/dashboard/all?year=${year}&month=${month}`);
       if (!response.ok) throw new Error('Failed to fetch');
+
       const data = await response.json();
-      setSummary(data);
+
+      // Set summary data
+      setSummary(data.summary);
+
+      // Set leaves today
+      setLeavesToday(data.leavesToday || []);
+
+      // Only set heatmap if already visible
+      if (isHeatmapVisible) {
+        setHeatmapData(data.heatmap?.heatmap || []);
+
+        // Fetch holidays
+        const holidaysResponse = await fetch(`/api/public/holidays?year=${year}&month=${month}`);
+        if (holidaysResponse.ok) {
+          const holidaysData = await holidaysResponse.json();
+          const holidayMap = new Map<string, string>(
+            holidaysData.holidays.map((h: { date: string; name: string }) => [
+              h.date.split('T')[0],
+              h.name
+            ])
+          );
+          setHolidays(holidayMap);
+        }
+      }
     } catch (error) {
-      console.error('Failed to fetch summary:', error);
+      console.error('Failed to fetch dashboard data:', error);
       toast.error('ไม่สามารถโหลดข้อมูลได้');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchLeavesToday = async () => {
-    try {
-      setLoadingLeaves(true);
-      const response = await fetch('/api/hr/dashboard/leaves-today');
-      if (response.ok) {
-        const data = await response.json();
-        setLeavesToday(data.leaves || []);
-      }
-    } catch (error) {
-      console.error('Error fetching leaves today:', error);
-    } finally {
       setLoadingLeaves(false);
     }
   };
 
   const fetchHeatmap = async () => {
+    // Only fetch if heatmap is visible
+    if (!isHeatmapVisible) return;
+
     try {
       setLoadingHeatmap(true);
       const year = selectedMonth.getFullYear();
@@ -541,6 +584,7 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
 
             {/* Heatmap Calendar */}
             <motion.div
+              ref={heatmapRef}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
@@ -598,7 +642,7 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                   ))}
 
                   {/* Day cells */}
-                  {heatmapData.map((day) => {
+                  {heatmapData.map((day: HeatmapDay) => {
                     const date = new Date(day.date);
                     const dayNum = date.getDate();
                     const isToday = format(new Date(), 'yyyy-MM-dd') === day.date;

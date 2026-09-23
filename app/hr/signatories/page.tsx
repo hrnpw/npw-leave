@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { getHrSession } from '@/lib/getSession';
+import { validateHrSession } from '@/lib/validateSession';
 import SignatoriesClient from './SignatoriesClient';
 
 export const metadata = {
@@ -7,11 +7,13 @@ export const metadata = {
 };
 
 export default async function SignatoriesPage() {
-  const session = await getHrSession();
+  const validation = await validateHrSession();
 
-  if (!session.id) {
+  if (!validation.valid) {
     redirect('/hr/login');
   }
+
+  const { session } = validation;
 
   return <SignatoriesClient hrUser={{
     id: session.id!,

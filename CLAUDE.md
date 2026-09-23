@@ -2,11 +2,10 @@
 
 ระบบยื่น/อนุมัติใบลาสำหรับโรงเรียน (Mobile Web App, Next.js + PWA)
 
-- Optimize performance
-- UI dev(Visual Design and Color)
+- ปรับปรุงและพัฒนา performance
+- แก้บัค
+
 ## Code 
-
-
 
 <!-- BEGIN:nextjs-agent-rules -->
 

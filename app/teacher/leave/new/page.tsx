@@ -1,4 +1,4 @@
-import { getTeacherSession } from '@/lib/getSession';
+import { validateTeacherSession } from '@/lib/validateSession';
 import { redirect } from 'next/navigation';
 import { lazy, Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
@@ -17,11 +17,13 @@ function LoadingFallback() {
 }
 
 export default async function NewLeavePage() {
-  const session = await getTeacherSession();
+  const validation = await validateTeacherSession();
 
-  if (!session.id) {
+  if (!validation.valid) {
     redirect('/verify');
   }
+
+  const { session } = validation;
 
   return (
     <Suspense fallback={<LoadingFallback />}>

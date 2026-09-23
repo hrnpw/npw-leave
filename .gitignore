@@ -48,7 +48,7 @@ VERCEL_ENV_SETUP.md
 # backup folders
 lib - backup*/
 *backup*/
-Docs/
+docs*/
 
 # IDE
 .vscode/
@@ -58,3 +58,7 @@ Docs/
 
 # OS
 Thumbs.db
+CODE_SPLITTING_SUMMARY.md
+CLAUDE.md
+DATABASE_OPTIMIZATION.md
+PERFORMANCE_IMPROVEMENT_RECOMMENDATIONS.md

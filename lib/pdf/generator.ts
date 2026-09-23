@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
-const isDev = process.env.NODE_ENV === 'development';
+const isDev = process.env.NODE_ENV !== 'production' || !process.env.VERCEL;
 
 interface LeaveData {
   leaveNo: string;

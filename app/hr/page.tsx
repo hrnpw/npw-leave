@@ -1,10 +1,10 @@
 import { redirect } from 'next/navigation';
-import { getHrSession } from '@/lib/getSession';
+import { validateHrSession } from '@/lib/validateSession';
 
 export default async function HrPage() {
-  const session = await getHrSession();
+  const validation = await validateHrSession();
 
-  if (session.id) {
+  if (validation.valid) {
     redirect('/hr/dashboard');
   } else {
     redirect('/hr/login');

@@ -10,14 +10,14 @@ let cachedFontBold: string | null = null;
 function getBase64Font(fontName: 'regular' | 'bold'): string {
   if (fontName === 'regular') {
     if (!cachedFontRegular) {
-      const fontPath = join(process.cwd(), 'public', 'fonts', 'THSarabunNew.ttf');
+      const fontPath = join(process.cwd(), 'public', 'fonts', 'THSarabunNew.woff2');
       const fontBuffer = readFileSync(fontPath);
       cachedFontRegular = fontBuffer.toString('base64');
     }
     return cachedFontRegular;
   } else {
     if (!cachedFontBold) {
-      const fontPath = join(process.cwd(), 'public', 'fonts', 'THSarabunNew Bold.ttf');
+      const fontPath = join(process.cwd(), 'public', 'fonts', 'THSarabunNew-Bold.woff2');
       const fontBuffer = readFileSync(fontPath);
       cachedFontBold = fontBuffer.toString('base64');
     }

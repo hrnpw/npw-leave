@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { getHrSession } from '@/lib/getSession';
+import { validateHrSession } from '@/lib/validateSession';
 import { lazy, Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
 
@@ -22,11 +22,13 @@ function LoadingFallback() {
 }
 
 export default async function AdminPage() {
-  const session = await getHrSession();
+  const validation = await validateHrSession();
 
-  if (!session.id) {
+  if (!validation.valid) {
     redirect('/hr/login');
   }
+
+  const { session } = validation;
 
   if (session.role !== 'super_admin') {
     redirect('/hr/dashboard');

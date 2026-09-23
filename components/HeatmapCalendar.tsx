@@ -11,6 +11,7 @@ interface HeatmapCalendarProps {
   data?: Record<string, number>; // { 'YYYY-MM-DD': count }
   currentDate?: Date;
   onDayClick?: (dateString: string) => void;
+  onDayHover?: (dateString: string) => void;
   onMonthChange?: (date: Date) => void;
   clickable?: boolean;
   className?: string;
@@ -21,6 +22,7 @@ export function HeatmapCalendar({
   data = {},
   currentDate,
   onDayClick,
+  onDayHover,
   onMonthChange,
   clickable = true,
   className = '',
@@ -118,6 +120,7 @@ export function HeatmapCalendar({
             >
               <button
                 onClick={() => clickable && isCurrentMonth && count > 0 && onDayClick?.(dateKey)}
+                onMouseEnter={() => clickable && isCurrentMonth && count > 0 && onDayHover?.(dateKey)}
                 disabled={!isCurrentMonth || !clickable || count === 0}
                 className={`
                   w-full aspect-square rounded-lg transition-all relative flex items-center justify-center

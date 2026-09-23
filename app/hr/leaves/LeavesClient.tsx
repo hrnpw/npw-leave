@@ -142,7 +142,7 @@ export default function LeavesClient({ hrUser }: LeavesClientProps) {
     fetchLeaves();
     fetchStats();
     fetchDepartments();
-  }, [searchParams]);
+  }, [searchParams.toString()]); // ใช้ .toString() แทนเพื่อเปรียบเทียบค่าจริงๆ
 
   const fetchLeaves = async () => {
     try {
