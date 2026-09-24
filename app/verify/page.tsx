@@ -8,7 +8,7 @@ export default async function VerifyPage() {
   const session = await getTeacherSession();
 
   if (session.id) {
-    redirect('/teacher/dashboard');
+    redirect('/teacher');
   }
 
   return (
