@@ -147,20 +147,10 @@ export default function VerifyClient() {
         description: `ยินดีต้อนรับ ${data.teacher?.firstName || ''} ${data.teacher?.lastName || ''}`,
       });
 
-      // Verify session before navigation to prevent race condition
-      try {
-        const verifyRes = await fetch('/api/auth/teacher/extend', { method: 'POST' });
-        if (verifyRes.ok) {
-          // Session verified, safe to use client-side navigation
-          router.push(returnUrl);
-        } else {
-          // Session not ready, use full page reload as fallback
-          window.location.href = returnUrl;
-        }
-      } catch {
-        // Network error, use full page reload as fallback
-        window.location.href = returnUrl;
-      }
+      // Wait for cookie to be set before navigation
+      // Use full page reload to ensure middleware sees the cookie
+      await new Promise(resolve => setTimeout(resolve, 100));
+      window.location.href = returnUrl;
     } catch (err) {
       setError('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
       setLoading(false);

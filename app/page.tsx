@@ -92,22 +92,27 @@ export default function HomePage() {
       setLoading(true);
       setError(null);
 
-      // Fetch summary
-      const summaryResponse = await fetch('/api/public/summary');
-      if (!summaryResponse.ok) {
-        throw new Error(summaryResponse.status === 500
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = today.getMonth() + 1;
+
+      // Single API call for all data (summary + heatmap + holidays)
+      const response = await fetch(`/api/public/dashboard?year=${year}&month=${month}`);
+      if (!response.ok) {
+        throw new Error(response.status === 500
           ? 'เซิร์ฟเวอร์ขัดข้อง กรุณาลองใหม่อีกครั้ง'
           : 'ไม่สามารถโหลดข้อมูลได้'
         );
       }
-      const summaryData = await summaryResponse.json();
-      setSummary(summaryData);
-      setLastRefresh(new Date());
 
-      // Fetch heatmap data for current month
-      const today = new Date();
+      const data = await response.json();
+
+      // Update all states from single response
+      setSummary(data.summary);
+      setHeatmapData(data.heatmap);
+      setHolidays(data.holidays);
       setCurrentHeatmapDate(today);
-      await fetchHeatmapData(today);
+      setLastRefresh(new Date());
     } catch (err) {
       const message = err instanceof Error ? err.message : 'ไม่สามารถโหลดข้อมูลได้';
       setError(message);
@@ -128,22 +133,17 @@ export default function HomePage() {
       const year = date.getFullYear();
       const month = date.getMonth() + 1;
 
-      // Fetch heatmap data (now includes leaves array)
-      const heatmapResponse = await fetch(
-        `/api/public/heatmap?year=${year}&month=${month}`
-      );
-      if (heatmapResponse.ok) {
-        const data = await heatmapResponse.json();
-        setHeatmapData(data);
-      }
-
-      // Fetch holidays
-      const holidaysResponse = await fetch(
-        `/api/public/holidays?year=${year}&month=${month}`
-      );
-      if (holidaysResponse.ok) {
-        const data = await holidaysResponse.json();
-        setHolidays(data.holidays || []);
+      // Fetch combined data (heatmap + holidays)
+      const response = await fetch(`/api/public/dashboard?year=${year}&month=${month}`);
+      if (response.ok) {
+        const data = await response.json();
+        setHeatmapData(data.heatmap);
+        setHolidays(data.holidays);
+        // Update summary only if it's current month
+        const now = new Date();
+        if (year === now.getFullYear() && month === now.getMonth() + 1) {
+          setSummary(data.summary);
+        }
       }
     } catch (err) {
       console.error('Failed to fetch heatmap:', err);
@@ -521,7 +521,7 @@ export default function HomePage() {
         <AnimatePresence>
           {selectedDate && (
             <div
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4"
+              className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
               onClick={closeModal}
             >
               <motion.div

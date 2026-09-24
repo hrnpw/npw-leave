@@ -50,13 +50,13 @@ export async function GET() {
       fiscalYear = thaiYear;
     }
 
-    // Single query to fetch ALL leaves we need with proper indexes
+    // Optimized query: reduced lookback from 90 to 30 days for recent leaves
     const allLeaves = await prisma.leave.findMany({
       where: {
         teacherId,
         OR: [
-          // For recent (last 3 leaves, any status)
-          { createdAt: { gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) } },
+          // For recent (last 3 leaves within 30 days, any status)
+          { createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } },
           // For stats (approved in current period)
           {
             status: 'approved',

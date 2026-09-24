@@ -61,20 +61,10 @@ export default function HrLoginClient() {
         description: `ยินดีต้อนรับ คุณ${data.user?.firstName || ''}`
       });
 
-      // Verify session before navigation to prevent race condition
-      try {
-        const verifyRes = await fetch('/api/auth/hr/extend', { method: 'POST' });
-        if (verifyRes.ok) {
-          // Session verified, safe to use client-side navigation
-          router.push(returnUrl);
-        } else {
-          // Session not ready, use full page reload as fallback
-          window.location.href = returnUrl;
-        }
-      } catch {
-        // Network error, use full page reload as fallback
-        window.location.href = returnUrl;
-      }
+      // Wait for cookie to be set before navigation
+      // Use full page reload to ensure middleware sees the cookie
+      await new Promise(resolve => setTimeout(resolve, 100));
+      window.location.href = returnUrl;
     } catch (err: any) {
       let errorMsg = 'เข้าสู่ระบบไม่สำเร็จ';
       let errorDesc = err.message;
