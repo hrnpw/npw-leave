@@ -71,13 +71,18 @@ export default function HomePage() {
   const [isPulling, setIsPulling] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const initialLoadRef = useRef(false);
+
   useEffect(() => {
-    fetchData();
+    if (!initialLoadRef.current) {
+      initialLoadRef.current = true;
+      fetchData();
+    }
   }, []);
 
   useEffect(() => {
-    // Skip first render (already fetched in fetchData)
-    if (currentHeatmapDate.getTime() !== new Date().getTime()) {
+    // Only fetch heatmap when month changes (not on initial load)
+    if (initialLoadRef.current && currentHeatmapDate.getTime() !== new Date().getTime()) {
       fetchHeatmapData(currentHeatmapDate);
     }
   }, [currentHeatmapDate]);

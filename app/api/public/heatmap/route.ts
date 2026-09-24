@@ -25,67 +25,66 @@ export async function GET(request: Request) {
     // Get all days in month
     const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
-    // Get all approved leaves that overlap with this month
-    const leaves = await prisma.leave.findMany({
+    // Get leave days in this month with leave and teacher info (single query with joins)
+    const leaveDays = await prisma.leaveDay.findMany({
       where: {
-        status: 'approved',
-        startDate: { lte: monthEnd },
-        endDate: { gte: monthStart }
+        date: { gte: monthStart, lte: monthEnd },
+        leave: { status: 'approved' },
       },
       include: {
-        teacher: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            teacherCode: true,
-            department: true,
-          }
-        }
-      }
+        leave: {
+          include: {
+            teacher: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                teacherCode: true,
+                department: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     // Build a map: date string -> leaves on that date
-    const leavesByDate = new Map<string, typeof leaves>();
+    const leavesByDate = new Map<string, typeof leaveDays>();
 
-    for (const leave of leaves) {
-      const leaveStart = leave.startDate > monthStart ? leave.startDate : monthStart;
-      const leaveEnd = leave.endDate < monthEnd ? leave.endDate : monthEnd;
-
-      // Generate all dates in the leave range
-      const currentDate = new Date(leaveStart);
-      while (currentDate <= leaveEnd) {
-        const dateKey = format(currentDate, 'yyyy-MM-dd');
-        const existing = leavesByDate.get(dateKey) || [];
-        if (!existing.find(l => l.id === leave.id)) {
-          existing.push(leave);
-        }
-        leavesByDate.set(dateKey, existing);
-
-        // Move to next day
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
+    for (const leaveDay of leaveDays) {
+      const dateKey = format(leaveDay.date, 'yyyy-MM-dd');
+      const existing = leavesByDate.get(dateKey) || [];
+      existing.push(leaveDay);
+      leavesByDate.set(dateKey, existing);
     }
 
     // Build heatmap response
     const heatmapData = daysInMonth.map((day) => {
       const dateKey = format(day, 'yyyy-MM-dd');
-      const leavesOnDay = leavesByDate.get(dateKey) || [];
+      const leaveDaysOnDay = leavesByDate.get(dateKey) || [];
+
+      // Group by leave to avoid duplicates (one leave can have multiple days)
+      const uniqueLeaves = new Map();
+      for (const leaveDay of leaveDaysOnDay) {
+        if (!uniqueLeaves.has(leaveDay.leave.id)) {
+          uniqueLeaves.set(leaveDay.leave.id, {
+            id: leaveDay.leave.id,
+            firstName: leaveDay.leave.teacher.firstName,
+            lastName: leaveDay.leave.teacher.lastName,
+            teacherCode: leaveDay.leave.teacher.teacherCode,
+            department: leaveDay.leave.teacher.department,
+            type: leaveDay.leave.type,
+            customTypeName: leaveDay.leave.customTypeName,
+            isHalfDay: leaveDay.isHalfDay,
+            halfDayPeriod: leaveDay.halfDayPeriod,
+          });
+        }
+      }
 
       return {
         date: dateKey,
-        count: leavesOnDay.length,
-        leaves: leavesOnDay.map(leave => ({
-          id: leave.id,
-          firstName: leave.teacher.firstName,
-          lastName: leave.teacher.lastName,
-          teacherCode: leave.teacher.teacherCode,
-          department: leave.teacher.department,
-          type: leave.type,
-          customTypeName: leave.customTypeName,
-          isHalfDay: leave.isHalfDay,
-          halfDayPeriod: leave.halfDayPeriod,
-        })),
+        count: uniqueLeaves.size,
+        leaves: Array.from(uniqueLeaves.values()),
       };
     });
 

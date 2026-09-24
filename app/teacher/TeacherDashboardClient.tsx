@@ -113,37 +113,23 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
     try {
       setLoading(true);
 
-      // Fetch all data in parallel
-      const [recentRes, statsRes, timelineRes, upcomingRes] = await Promise.all([
-        fetch('/api/teacher/leaves/recent'),
-        fetch('/api/teacher/leaves/stats'),
-        fetch('/api/teacher/leaves/timeline'),
-        fetch('/api/teacher/leaves/upcoming'),
-      ]);
+      // Single API call for all dashboard data
+      const res = await fetch('/api/teacher/dashboard');
 
-      if (recentRes.ok) {
-        const data = await recentRes.json();
-        setRecentLeaves(data.leaves || []);
-      }
+      if (res.ok) {
+        const data = await res.json();
 
-      if (statsRes.ok) {
-        const data = await statsRes.json();
-        setStats(data.stats || {});
-      }
-
-      if (timelineRes.ok) {
-        const data = await timelineRes.json();
+        setRecentLeaves(data.recent?.leaves || []);
+        setStats(data.stats?.stats || {});
         setTimeline({
-          monthlyData: data.monthlyData || {},
-          periodLabel: data.periodLabel || '',
-          fiscalYear: data.fiscalYear || 0,
-          stats: data.stats || { totalDays: 0, totalCount: 0 },
+          monthlyData: data.timeline?.monthlyData || {},
+          periodLabel: data.timeline?.periodLabel || '',
+          fiscalYear: data.timeline?.fiscalYear || 0,
+          stats: data.timeline?.stats || { totalDays: 0, totalCount: 0 },
         });
-      }
-
-      if (upcomingRes.ok) {
-        const data = await upcomingRes.json();
-        setUpcomingLeaves(data.leaves || []);
+        setUpcomingLeaves(data.upcoming?.leaves || []);
+      } else {
+        toast.error('ไม่สามารถโหลดข้อมูลได้');
       }
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
