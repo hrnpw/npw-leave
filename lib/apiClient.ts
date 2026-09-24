@@ -37,6 +37,21 @@ export async function apiClient<T>(
         case 400:
           throw new ApiError(errorMessage, 400, errorData);
         case 401:
+          // Session expired or invalid - clear cookie and redirect
+          if (typeof window !== 'undefined') {
+            const currentPath = window.location.pathname;
+
+            // Determine which session type and redirect accordingly
+            if (currentPath.startsWith('/hr')) {
+              // HR session expired
+              document.cookie = 'hr_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+              window.location.href = `/hr/login?returnUrl=${encodeURIComponent(currentPath)}`;
+            } else if (currentPath.startsWith('/teacher')) {
+              // Teacher session expired
+              document.cookie = 'teacher_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+              window.location.href = `/verify?returnUrl=${encodeURIComponent(currentPath)}`;
+            }
+          }
           throw new ApiError('กรุณาเข้าสู่ระบบใหม่', 401);
         case 403:
           throw new ApiError('คุณไม่มีสิทธิ์เข้าถึง', 403);

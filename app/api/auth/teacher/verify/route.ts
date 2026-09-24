@@ -68,9 +68,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Success - create session
-
+    // Success - create fresh session (destroy any existing session first)
     const session = await getTeacherSession();
+    session.destroy(); // Clear old session if exists
+
     session.id = teacher.id;
     session.teacherCode = teacher.teacherCode;
     session.firstName = teacher.firstName;
