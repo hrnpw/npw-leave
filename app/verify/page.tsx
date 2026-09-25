@@ -1,14 +1,20 @@
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { getTeacherSession } from '@/lib/getSession';
+import { isSessionExpired } from '@/lib/session';
 import VerifyClient from './VerifyClient';
 
 export default async function VerifyPage() {
-  // Check if already logged in
+  // Check if already logged in with valid session
   const session = await getTeacherSession();
 
-  if (session.id) {
+  if (session.id && session.createdAt && !isSessionExpired(session.createdAt)) {
     redirect('/teacher');
+  }
+
+  // Clear expired session if exists
+  if (session.id && session.createdAt && isSessionExpired(session.createdAt)) {
+    session.destroy();
   }
 
   return (

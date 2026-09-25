@@ -17,8 +17,8 @@ export interface HrSession {
   createdAt: number;
 }
 
-// Session configuration - 1 hour sliding window
-const SESSION_TTL = 60 * 60; // 1 hour in seconds
+// Session configuration - 30 minutes sliding window
+const SESSION_TTL = 30 * 60; // 30 minutes in seconds
 const SESSION_WARNING_TIME = 5 * 60; // 5 minutes before expiry
 
 export const teacherSessionOptions: SessionOptions = {

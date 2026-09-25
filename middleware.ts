@@ -1,50 +1,114 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getIronSession } from 'iron-session';
+import { teacherSessionOptions, hrSessionOptions, isSessionExpired, TeacherSession, HrSession } from './lib/session';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Teacher routes - check cookie exists
+  // Teacher routes - check cookie exists and validate expiry
   if (pathname.startsWith('/teacher')) {
-    const teacherSession = request.cookies.get('teacher_session');
+    const teacherCookie = request.cookies.get('teacher_session');
 
-    if (!teacherSession) {
+    if (!teacherCookie) {
       const url = request.nextUrl.clone();
       url.pathname = '/verify';
       url.searchParams.set('returnUrl', pathname);
       return NextResponse.redirect(url);
     }
 
-    return NextResponse.next();
+    // Validate session expiry
+    try {
+      const response = NextResponse.next();
+      const session = await getIronSession<TeacherSession>(request, response, teacherSessionOptions);
+
+      if (!session.id || !session.createdAt || isSessionExpired(session.createdAt)) {
+        // Session expired - clear cookie and redirect
+        response.cookies.delete('teacher_session');
+        const url = request.nextUrl.clone();
+        url.pathname = '/verify';
+        url.searchParams.set('returnUrl', pathname);
+        return NextResponse.redirect(url);
+      }
+
+      return response;
+    } catch (error) {
+      // Invalid session - redirect to login
+      const url = request.nextUrl.clone();
+      url.pathname = '/verify';
+      url.searchParams.set('returnUrl', pathname);
+      return NextResponse.redirect(url);
+    }
   }
 
-  // Super Admin routes - check cookie exists and will be validated in page
+  // Super Admin routes - check cookie exists and validate expiry
   if (pathname.startsWith('/hr/admin')) {
-    const hrSession = request.cookies.get('hr_session');
+    const hrCookie = request.cookies.get('hr_session');
 
-    if (!hrSession) {
+    if (!hrCookie) {
       const url = request.nextUrl.clone();
       url.pathname = '/hr/login';
       url.searchParams.set('returnUrl', pathname);
       return NextResponse.redirect(url);
     }
 
-    // Role check happens in the page component
-    return NextResponse.next();
+    // Validate session expiry
+    try {
+      const response = NextResponse.next();
+      const session = await getIronSession<HrSession>(request, response, hrSessionOptions);
+
+      if (!session.id || !session.createdAt || isSessionExpired(session.createdAt)) {
+        // Session expired - clear cookie and redirect
+        response.cookies.delete('hr_session');
+        const url = request.nextUrl.clone();
+        url.pathname = '/hr/login';
+        url.searchParams.set('returnUrl', pathname);
+        return NextResponse.redirect(url);
+      }
+
+      return response;
+    } catch (error) {
+      // Invalid session - redirect to login
+      const url = request.nextUrl.clone();
+      url.pathname = '/hr/login';
+      url.searchParams.set('returnUrl', pathname);
+      return NextResponse.redirect(url);
+    }
   }
 
   // HR routes require HR session
   if (pathname.startsWith('/hr') && pathname !== '/hr/login') {
-    const hrSession = request.cookies.get('hr_session');
+    const hrCookie = request.cookies.get('hr_session');
 
-    if (!hrSession) {
+    if (!hrCookie) {
       const url = request.nextUrl.clone();
       url.pathname = '/hr/login';
       url.searchParams.set('returnUrl', pathname);
       return NextResponse.redirect(url);
     }
 
-    return NextResponse.next();
+    // Validate session expiry
+    try {
+      const response = NextResponse.next();
+      const session = await getIronSession<HrSession>(request, response, hrSessionOptions);
+
+      if (!session.id || !session.createdAt || isSessionExpired(session.createdAt)) {
+        // Session expired - clear cookie and redirect
+        response.cookies.delete('hr_session');
+        const url = request.nextUrl.clone();
+        url.pathname = '/hr/login';
+        url.searchParams.set('returnUrl', pathname);
+        return NextResponse.redirect(url);
+      }
+
+      return response;
+    } catch (error) {
+      // Invalid session - redirect to login
+      const url = request.nextUrl.clone();
+      url.pathname = '/hr/login';
+      url.searchParams.set('returnUrl', pathname);
+      return NextResponse.redirect(url);
+    }
   }
 
   return NextResponse.next();
