@@ -111,10 +111,6 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
 
   useEffect(() => {
     fetchAllDashboardData();
-  }, []);
-
-  useEffect(() => {
-    fetchHeatmap();
   }, [selectedMonth, isHeatmapVisible]);
 
   // Intersection Observer for lazy loading heatmap
@@ -145,6 +141,7 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
     try {
       setLoading(true);
       setLoadingLeaves(true);
+      setLoadingHeatmap(isHeatmapVisible);
 
       const year = selectedMonth.getFullYear();
       const month = selectedMonth.getMonth() + 1;
@@ -161,22 +158,23 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
       // Set leaves today
       setLeavesToday(data.leavesToday || []);
 
-      // Only set heatmap if already visible
+      // Only fetch heatmap and holidays if heatmap is visible
       if (isHeatmapVisible) {
         setHeatmapData(data.heatmap?.heatmap || []);
 
-        // Fetch holidays
-        const holidaysResponse = await fetch(`/api/public/holidays?year=${year}&month=${month}`);
-        if (holidaysResponse.ok) {
-          const holidaysData = await holidaysResponse.json();
-          const holidayMap = new Map<string, string>(
-            holidaysData.holidays.map((h: { date: string; name: string }) => [
-              h.date.split('T')[0],
-              h.name
-            ])
-          );
-          setHolidays(holidayMap);
-        }
+        // Fetch holidays in parallel (don't block on dashboard data)
+        fetch(`/api/public/holidays?year=${year}&month=${month}`)
+          .then(res => res.json())
+          .then(data => {
+            const holidayMap = new Map<string, string>(
+              data.holidays.map((h: { date: string; name: string }) => [
+                h.date.split('T')[0],
+                h.name
+              ])
+            );
+            setHolidays(holidayMap);
+          })
+          .catch(err => console.error('Failed to fetch holidays:', err));
       }
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
@@ -184,43 +182,10 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
     } finally {
       setLoading(false);
       setLoadingLeaves(false);
-    }
-  };
-
-  const fetchHeatmap = async () => {
-    // Only fetch if heatmap is visible
-    if (!isHeatmapVisible) return;
-
-    try {
-      setLoadingHeatmap(true);
-      const year = selectedMonth.getFullYear();
-      const month = selectedMonth.getMonth() + 1;
-
-      // Fetch heatmap data
-      const response = await fetch(`/api/hr/dashboard/heatmap?year=${year}&month=${month}`);
-      if (response.ok) {
-        const data = await response.json();
-        setHeatmapData(data.heatmap || []);
-      }
-
-      // Fetch holidays
-      const holidaysResponse = await fetch(`/api/public/holidays?year=${year}&month=${month}`);
-      if (holidaysResponse.ok) {
-        const data = await holidaysResponse.json();
-        const holidayMap = new Map<string, string>(
-          data.holidays.map((h: { date: string; name: string }) => [
-            h.date.split('T')[0],
-            h.name
-          ])
-        );
-        setHolidays(holidayMap);
-      }
-    } catch (error) {
-      console.error('Error fetching heatmap:', error);
-    } finally {
       setLoadingHeatmap(false);
     }
   };
+
 
   const handleLogout = async () => {
     if (loggingOut) return;

@@ -13,7 +13,14 @@ export async function GET() {
   try {
     const session = await getTeacherSession();
 
+    console.log('[Dashboard API] Session check:', {
+      hasId: !!session.id,
+      hasCreatedAt: !!session.createdAt,
+      sessionData: session.id ? { id: session.id, createdAt: session.createdAt } : null
+    });
+
     if (!session.id) {
+      console.error('[Dashboard API] No session ID - returning 401');
       return NextResponse.json(
         { error: 'ไม่ได้รับอนุญาต' },
         { status: 401 }
@@ -222,7 +229,7 @@ export async function GET() {
       }
     );
   } catch (error) {
-    console.error('Get teacher dashboard error:', error);
+    console.error('[Dashboard API] Error:', error);
     return NextResponse.json(
       { error: 'เกิดข้อผิดพลาด' },
       { status: 500 }

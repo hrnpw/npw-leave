@@ -77,6 +77,12 @@ export async function POST(request: NextRequest) {
     session.createdAt = Date.now();
     await session.save();
 
+    console.log('[Verify API] Session created:', {
+      id: session.id,
+      teacherCode: session.teacherCode,
+      createdAt: session.createdAt
+    });
+
     return NextResponse.json({
       success: true,
       teacher: {

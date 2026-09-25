@@ -22,7 +22,15 @@ export async function middleware(request: NextRequest) {
       const response = NextResponse.next();
       const session = await getIronSession<TeacherSession>(request, response, teacherSessionOptions);
 
+      console.log('[Middleware] Teacher session check:', {
+        pathname,
+        hasId: !!session.id,
+        hasCreatedAt: !!session.createdAt,
+        isExpired: session.createdAt ? isSessionExpired(session.createdAt) : 'N/A'
+      });
+
       if (!session.id || !session.createdAt || isSessionExpired(session.createdAt)) {
+        console.warn('[Middleware] Invalid/expired session - redirecting to /verify');
         // Session expired - clear cookie and redirect
         response.cookies.delete('teacher_session');
         const url = request.nextUrl.clone();
@@ -33,6 +41,7 @@ export async function middleware(request: NextRequest) {
 
       return response;
     } catch (error) {
+      console.error('[Middleware] Session validation error:', error);
       // Invalid session - redirect to login
       const url = request.nextUrl.clone();
       url.pathname = '/verify';
