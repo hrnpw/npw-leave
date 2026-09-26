@@ -123,27 +123,34 @@ export async function GET(request: Request) {
         },
       }),
 
-      // 6. Heatmap data for the requested month
-      prisma.leaveDay.findMany({
+      // 6. Heatmap data - get approved leaves in the month with their days
+      prisma.leave.findMany({
         where: {
-          date: { gte: monthStart, lte: monthEnd },
-          leave: { status: 'approved' },
+          status: 'approved',
+          startDate: { lte: monthEnd },
+          endDate: { gte: monthStart },
         },
-        include: {
-          leave: {
+        select: {
+          id: true,
+          type: true,
+          customTypeName: true,
+          teacher: {
             select: {
               id: true,
-              type: true,
-              customTypeName: true,
-              teacher: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  teacherCode: true,
-                  department: true,
-                },
-              },
+              firstName: true,
+              lastName: true,
+              teacherCode: true,
+              department: true,
+            },
+          },
+          leaveDays: {
+            where: {
+              date: { gte: monthStart, lte: monthEnd },
+            },
+            select: {
+              date: true,
+              isHalfDay: true,
+              halfDayPeriod: true,
             },
           },
         },
@@ -197,42 +204,49 @@ export async function GET(request: Request) {
 
     const leavesGrouped = Object.values(leavesByType).sort((a, b) => b.count - a.count);
 
-    // Process heatmap data
-    const leavesByDate = new Map<string, typeof heatmapLeaveDays>();
+    // Process heatmap data - now working with leaves instead of leaveDays
+    const leavesByDate = new Map<string, Array<{
+      id: string;
+      firstName: string;
+      lastName: string;
+      teacherCode: string;
+      department: string | null;
+      type: string;
+      customTypeName: string | null;
+      isHalfDay: boolean;
+      halfDayPeriod?: string;
+    }>>();
 
-    for (const leaveDay of heatmapLeaveDays) {
-      const dateKey = format(leaveDay.date, 'yyyy-MM-dd');
-      const existing = leavesByDate.get(dateKey) || [];
-      existing.push(leaveDay);
-      leavesByDate.set(dateKey, existing);
+    // Flatten leaves and their days
+    for (const leave of heatmapLeaveDays) {
+      for (const leaveDay of leave.leaveDays) {
+        const dateKey = format(leaveDay.date, 'yyyy-MM-dd');
+        const existing = leavesByDate.get(dateKey) || [];
+
+        existing.push({
+          id: leave.id,
+          firstName: leave.teacher.firstName,
+          lastName: leave.teacher.lastName,
+          teacherCode: leave.teacher.teacherCode,
+          department: leave.teacher.department,
+          type: leave.type,
+          customTypeName: leave.customTypeName,
+          isHalfDay: leaveDay.isHalfDay,
+          halfDayPeriod: leaveDay.halfDayPeriod || undefined,
+        });
+
+        leavesByDate.set(dateKey, existing);
+      }
     }
 
     const heatmapData = daysInMonth.map((day) => {
       const dateKey = format(day, 'yyyy-MM-dd');
-      const leaveDaysOnDay = leavesByDate.get(dateKey) || [];
-
-      // Group by leave to avoid duplicates
-      const uniqueLeaves = new Map();
-      for (const leaveDay of leaveDaysOnDay) {
-        if (!uniqueLeaves.has(leaveDay.leave.id)) {
-          uniqueLeaves.set(leaveDay.leave.id, {
-            id: leaveDay.leave.id,
-            firstName: leaveDay.leave.teacher.firstName,
-            lastName: leaveDay.leave.teacher.lastName,
-            teacherCode: leaveDay.leave.teacher.teacherCode,
-            department: leaveDay.leave.teacher.department,
-            type: leaveDay.leave.type,
-            customTypeName: leaveDay.leave.customTypeName,
-            isHalfDay: leaveDay.isHalfDay,
-            halfDayPeriod: leaveDay.halfDayPeriod,
-          });
-        }
-      }
+      const leavesOnDay = leavesByDate.get(dateKey) || [];
 
       return {
         date: dateKey,
-        count: uniqueLeaves.size,
-        leaves: Array.from(uniqueLeaves.values()),
+        count: leavesOnDay.length,
+        leaves: leavesOnDay,
       };
     });
 
