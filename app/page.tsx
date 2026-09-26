@@ -612,12 +612,14 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto flex gap-2">
           <Link
             href="/verify"
+            prefetch={false}
             className="flex-1 py-3.5 bg-orange-500 hover:bg-orange-600 text-white text-center font-semibold rounded-lg shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
           >
             ยื่นใบลา
           </Link>
           <Link
             href="/hr/login"
+            prefetch={false}
             className="px-5 py-3.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-center font-medium rounded-lg shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
           >
             เจ้าหน้าที่
