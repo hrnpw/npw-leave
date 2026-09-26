@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { teacherSessionOptions, hrSessionOptions, isSessionExpired, TeacherSession, HrSession } from './lib/session';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Teacher routes - check cookie exists and validate expiry

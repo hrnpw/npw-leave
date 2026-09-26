@@ -63,12 +63,12 @@ export default function HrLoginClient() {
 
       console.log('[HR Login] Login successful, redirecting to:', returnUrl);
 
-      // Wait a bit for cookie to be fully set
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Wait a bit for cookie to be fully set before navigation
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Use full page reload to ensure middleware sees the cookie
-      // Note: Cookie is httpOnly so we can't check it with document.cookie
-      window.location.href = returnUrl;
+      // Use router.replace with replace to prevent back button issues
+      // This will trigger proxy to check the new cookie
+      router.replace(returnUrl);
     } catch (err: any) {
       let errorMsg = 'เข้าสู่ระบบไม่สำเร็จ';
       let errorDesc = err.message;
