@@ -114,11 +114,11 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
   useEffect(() => {
     setCurrentDate(new Date());
   }, []);
-
+	
   useEffect(() => {
     fetchAllDashboardData();
   }, [selectedMonth]);
-
+  
   // Intersection Observer for lazy loading heatmap
   useEffect(() => {
     const observer = new IntersectionObserver(
