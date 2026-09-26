@@ -10,16 +10,20 @@ let cachedFontBold: string | null = null;
 function getBase64Font(fontName: 'regular' | 'bold'): string {
   if (fontName === 'regular') {
     if (!cachedFontRegular) {
-      const fontPath = join(process.cwd(), 'public', 'fonts', 'THSarabunNew.woff2');
+      const fontPath = join(process.cwd(), 'public', 'fonts', 'THSarabunNew.ttf');
+      console.log('[FONT] Loading regular font from:', fontPath);
       const fontBuffer = readFileSync(fontPath);
       cachedFontRegular = fontBuffer.toString('base64');
+      console.log('[FONT] Regular font loaded, base64 length:', cachedFontRegular.length);
     }
     return cachedFontRegular;
   } else {
     if (!cachedFontBold) {
-      const fontPath = join(process.cwd(), 'public', 'fonts', 'THSarabunNew-Bold.woff2');
+      const fontPath = join(process.cwd(), 'public', 'fonts', 'THSarabunNew-Bold.ttf');
+      console.log('[FONT] Loading bold font from:', fontPath);
       const fontBuffer = readFileSync(fontPath);
       cachedFontBold = fontBuffer.toString('base64');
+      console.log('[FONT] Bold font loaded, base64 length:', cachedFontBold.length);
     }
     return cachedFontBold;
   }
@@ -188,12 +192,14 @@ export function generateLeaveFormHTML(
       src: url('data:font/truetype;charset=utf-8;base64,${fontRegular}') format('truetype');
       font-weight: normal;
       font-style: normal;
+      font-display: block;
     }
     @font-face {
       font-family: 'TH Sarabun New';
       src: url('data:font/truetype;charset=utf-8;base64,${fontBold}') format('truetype');
       font-weight: bold;
       font-style: normal;
+      font-display: block;
     }
 
     * {
@@ -407,8 +413,16 @@ export function generateLeaveFormHTML(
       }
     }
   </style>
+
 </head>
 <body>
+  <!-- Hidden element to force font loading -->
+  <div style="position: absolute; left: -9999px; font-family: 'TH Sarabun New';">
+    ทดสอบฟอนต์ไทย กขคง abcABC 0123456789
+  </div>
+  <div style="position: absolute; left: -9999px; font-family: 'TH Sarabun New'; font-weight: bold;">
+    ทดสอบฟอนต์ไทยตัวหนา กขคง abcABC 0123456789
+  </div>
   <div class="leave-no">เลขที่ ${leave.leaveNo}</div>
   <div class="content-wrapper">
 	${schoolLogoBase64 ? `<img src="data:image/png;base64,${schoolLogoBase64}" alt="โลโก้โรงเรียน" class="school-logo" />` : ''}

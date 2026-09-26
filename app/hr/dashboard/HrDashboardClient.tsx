@@ -108,10 +108,16 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
   const [changingPassword, setChangingPassword] = useState(false);
   const [isHeatmapVisible, setIsHeatmapVisible] = useState(false);
   const heatmapRef = useRef<HTMLDivElement>(null);
+  const [currentDate, setCurrentDate] = useState<Date | null>(null);
+
+  // Fix hydration mismatch - set current date only on client
+  useEffect(() => {
+    setCurrentDate(new Date());
+  }, []);
 
   useEffect(() => {
     fetchAllDashboardData();
-  }, [selectedMonth, isHeatmapVisible]);
+  }, [selectedMonth]);
 
   // Intersection Observer for lazy loading heatmap
   useEffect(() => {
@@ -126,22 +132,29 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
       { rootMargin: '100px' } // Start loading 100px before heatmap is visible
     );
 
-    if (heatmapRef.current) {
-      observer.observe(heatmapRef.current);
+    const currentRef = heatmapRef.current;
+    if (currentRef) {
+      observer.observe(currentRef);
     }
 
     return () => {
-      if (heatmapRef.current) {
-        observer.unobserve(heatmapRef.current);
+      if (currentRef) {
+        observer.unobserve(currentRef);
       }
     };
   }, [isHeatmapVisible]);
+
+  // Fetch heatmap data when visible
+  useEffect(() => {
+    if (isHeatmapVisible) {
+      fetchAllDashboardData();
+    }
+  }, [isHeatmapVisible, selectedMonth]);
 
   const fetchAllDashboardData = async () => {
     try {
       setLoading(true);
       setLoadingLeaves(true);
-      setLoadingHeatmap(isHeatmapVisible);
 
       const year = selectedMonth.getFullYear();
       const month = selectedMonth.getMonth() + 1;
@@ -158,8 +171,9 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
       // Set leaves today
       setLeavesToday(data.leavesToday || []);
 
-      // Only fetch heatmap and holidays if heatmap is visible
+      // Only set heatmap data if heatmap is visible
       if (isHeatmapVisible) {
+        setLoadingHeatmap(true);
         setHeatmapData(data.heatmap?.heatmap || []);
 
         // Fetch holidays in parallel (don't block on dashboard data)
@@ -174,7 +188,8 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
             );
             setHolidays(holidayMap);
           })
-          .catch(err => console.error('Failed to fetch holidays:', err));
+          .catch(err => console.error('Failed to fetch holidays:', err))
+          .finally(() => setLoadingHeatmap(false));
       }
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
@@ -182,7 +197,6 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
     } finally {
       setLoading(false);
       setLoadingLeaves(false);
-      setLoadingHeatmap(false);
     }
   };
 
@@ -318,7 +332,7 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
               </div>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {formatFullThaiDate(new Date())}
+              {currentDate ? formatFullThaiDate(currentDate) : ''}
             </p>
           </div>
         </header>

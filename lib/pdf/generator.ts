@@ -247,6 +247,12 @@ export async function generateLeavePDF(
       waitUntil: ['domcontentloaded', 'networkidle0'] as any,
     });
 
+    // Wait for fonts to load completely
+    await page.evaluateHandle('document.fonts.ready');
+
+	// Add a small delay to ensure fonts are fully rendered
+    await new Promise(resolve => setTimeout(resolve, 500));
+
     // Generate PDF
     const pdf = await page.pdf({
       format: 'A4',
@@ -257,6 +263,7 @@ export async function generateLeavePDF(
         bottom: '1.5cm',
         left: '2cm',
       },
+      preferCSSPageSize: false,
     });
 
     await browser.close();

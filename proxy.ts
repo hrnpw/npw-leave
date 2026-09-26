@@ -30,22 +30,22 @@ export async function proxy(request: NextRequest) {
       });
 
       if (!session.id || !session.createdAt || isSessionExpired(session.createdAt)) {
-        console.warn('[Middleware] Invalid/expired session - redirecting to /verify');
-        // Session expired - clear cookie and redirect
+        console.warn('[Middleware] Invalid/expired session - redirecting to home');
+        // Session expired - clear cookie and redirect to home page
         response.cookies.delete('teacher_session');
         const url = request.nextUrl.clone();
-        url.pathname = '/verify';
-        url.searchParams.set('returnUrl', pathname);
+        url.pathname = '/';
+        url.searchParams.delete('returnUrl'); // Remove returnUrl for expired sessions
         return NextResponse.redirect(url);
       }
 
       return response;
     } catch (error) {
       console.error('[Middleware] Session validation error:', error);
-      // Invalid session - redirect to login
+      // Invalid session - redirect to home page
       const url = request.nextUrl.clone();
-      url.pathname = '/verify';
-      url.searchParams.set('returnUrl', pathname);
+      url.pathname = '/';
+      url.searchParams.delete('returnUrl');
       return NextResponse.redirect(url);
     }
   }
@@ -67,20 +67,20 @@ export async function proxy(request: NextRequest) {
       const session = await getIronSession<HrSession>(request, response, hrSessionOptions);
 
       if (!session.id || !session.createdAt || isSessionExpired(session.createdAt)) {
-        // Session expired - clear cookie and redirect
+        // Session expired - clear cookie and redirect to home page
         response.cookies.delete('hr_session');
         const url = request.nextUrl.clone();
-        url.pathname = '/hr/login';
-        url.searchParams.set('returnUrl', pathname);
+        url.pathname = '/';
+        url.searchParams.delete('returnUrl');
         return NextResponse.redirect(url);
       }
 
       return response;
     } catch (error) {
-      // Invalid session - redirect to login
+      // Invalid session - redirect to home page
       const url = request.nextUrl.clone();
-      url.pathname = '/hr/login';
-      url.searchParams.set('returnUrl', pathname);
+      url.pathname = '/';
+      url.searchParams.delete('returnUrl');
       return NextResponse.redirect(url);
     }
   }
@@ -102,20 +102,20 @@ export async function proxy(request: NextRequest) {
       const session = await getIronSession<HrSession>(request, response, hrSessionOptions);
 
       if (!session.id || !session.createdAt || isSessionExpired(session.createdAt)) {
-        // Session expired - clear cookie and redirect
+        // Session expired - clear cookie and redirect to home page
         response.cookies.delete('hr_session');
         const url = request.nextUrl.clone();
-        url.pathname = '/hr/login';
-        url.searchParams.set('returnUrl', pathname);
+        url.pathname = '/';
+        url.searchParams.delete('returnUrl');
         return NextResponse.redirect(url);
       }
 
       return response;
     } catch (error) {
-      // Invalid session - redirect to login
+      // Invalid session - redirect to home page
       const url = request.nextUrl.clone();
-      url.pathname = '/hr/login';
-      url.searchParams.set('returnUrl', pathname);
+      url.pathname = '/';
+      url.searchParams.delete('returnUrl');
       return NextResponse.redirect(url);
     }
   }

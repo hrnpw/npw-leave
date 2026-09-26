@@ -1,15 +1,30 @@
 import type { Metadata, Viewport } from 'next';
-import { Kanit } from 'next/font/google';
+import localFont from 'next/font/local';
 import { Toaster } from 'sonner';
 import { PWARegister } from '@/components/PWARegister';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 import './globals.css';
 
-// Kanit font from Google Fonts
-const kanit = Kanit({
-  subsets: ['thai', 'latin'],
-  weight: ['400', '500', '600'],
+// Kanit font - self-hosted
+const kanit = localFont({
+  src: [
+    {
+      path: '../public/fonts/kanit/kanit-v17-latin_thai-regular.woff2',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/kanit/kanit-v17-latin_thai-500.woff2',
+      weight: '500',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/kanit/kanit-v17-latin_thai-600.woff2',
+      weight: '600',
+      style: 'normal',
+    },
+  ],
   variable: '--font-kanit',
   display: 'swap',
 });
