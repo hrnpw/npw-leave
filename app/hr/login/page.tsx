@@ -1,23 +1,7 @@
 import { Suspense } from 'react';
-import { redirect } from 'next/navigation';
-import { getHrSession } from '@/lib/getSession';
-import { isSessionExpired } from '@/lib/session';
 import HrLoginClient from './HrLoginClient';
 
-export default async function HrLoginPage() {
-  // Check if already logged in with valid session
-  const session = await getHrSession();
-
-  if (session.id && session.createdAt && !isSessionExpired(session.createdAt)) {
-    redirect('/hr/dashboard');
-  }
-
-  // Clear expired session if exists
-  if (session.id && session.createdAt && isSessionExpired(session.createdAt)) {
-    await session.destroy();
-    console.log('[HR Login Page] Destroyed expired session');
-  }
-
+export default function HrLoginPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
