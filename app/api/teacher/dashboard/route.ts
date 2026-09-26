@@ -7,20 +7,13 @@ import type { LeaveType } from '@/types/leave';
 
 /**
  * GET /api/teacher/dashboard
- * รวมข้อมูลทั้งหมดที่ dashboard ต้องการใน 1 query
+ * Optimized: แยก queries เป็น parallel requests และลด data ที่ดึง
  */
 export async function GET() {
   try {
     const session = await getTeacherSession();
 
-    console.log('[Dashboard API] Session check:', {
-      hasId: !!session.id,
-      hasCreatedAt: !!session.createdAt,
-      sessionData: session.id ? { id: session.id, createdAt: session.createdAt } : null
-    });
-
     if (!session.id) {
-      console.error('[Dashboard API] No session ID - returning 401');
       return NextResponse.json(
         { error: 'ไม่ได้รับอนุญาต' },
         { status: 401 }
@@ -57,94 +50,77 @@ export async function GET() {
       fiscalYear = thaiYear;
     }
 
-    // Optimized query: reduced lookback from 90 to 30 days for recent leaves
-    const allLeaves = await prisma.leave.findMany({
-      where: {
-        teacherId,
-        OR: [
-          // For recent (last 3 leaves within 30 days, any status)
-          { createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } },
-          // For stats (approved in current period)
-          {
-            status: 'approved',
-            startDate: { gte: currentPeriod.start, lte: currentPeriod.end },
-          },
-          // For timeline (pending/approved/rejected in current period)
-          {
-            status: { in: ['pending', 'approved', 'rejected'] },
-            startDate: { gte: period.startDate, lte: period.endDate },
-          },
-          // For upcoming (approved, starts in next 30 days)
-          {
-            status: 'approved',
-            startDate: { gte: today, lte: futureDate },
-          },
-        ],
-      },
-      select: {
-        id: true,
-        leaveNo: true,
-        type: true,
-        customTypeName: true,
-        status: true,
-        startDate: true,
-        endDate: true,
-        daysWorking: true,
-        isHalfDay: true,
-        halfDayPeriod: true,
-        rejectionReason: true,
-        createdAt: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    // OPTIMIZATION: แยก queries ออกเป็น parallel requests แทนที่จะใช้ OR ที่ซับซ้อน
+    const [recentLeavesData, statsData, upcomingLeavesData] = await Promise.all([
+      // Query 1: Recent leaves (เร็วที่สุด - limit 3)
+      prisma.leave.findMany({
+        where: { teacherId },
+        select: {
+          id: true,
+          leaveNo: true,
+          type: true,
+          customTypeName: true,
+          status: true,
+          startDate: true,
+          endDate: true,
+          daysWorking: true,
+          rejectionReason: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 3,
+      }),
 
-    // Fetch leaveDays only for upcoming leaves (optimization)
-    const upcomingLeaveIds = allLeaves
-      .filter(
-        leave =>
-          leave.status === 'approved' &&
-          leave.startDate >= today &&
-          leave.startDate <= futureDate
-      )
-      .map(l => l.id);
+      // Query 2: Stats - เฉพาะ approved ใน current period
+      prisma.leave.findMany({
+        where: {
+          teacherId,
+          status: 'approved',
+          startDate: { gte: currentPeriod.start, lte: currentPeriod.end },
+        },
+        select: {
+          type: true,
+          daysWorking: true,
+        },
+      }),
 
-    const leaveDaysForUpcoming = upcomingLeaveIds.length > 0
-      ? await prisma.leaveDay.findMany({
-          where: {
-            leaveId: { in: upcomingLeaveIds },
-          },
-          select: {
-            leaveId: true,
-            isHalfDay: true,
-            halfDayPeriod: true,
-          },
-          take: upcomingLeaveIds.length, // One per leave
-        })
-      : [];
+      // Query 3: Upcoming leaves - เฉพาะที่กำลังจะมา
+      prisma.leave.findMany({
+        where: {
+          teacherId,
+          status: 'approved',
+          startDate: { gte: today, lte: futureDate },
+        },
+        select: {
+          id: true,
+          leaveNo: true,
+          type: true,
+          customTypeName: true,
+          status: true,
+          startDate: true,
+          endDate: true,
+          daysWorking: true,
+        },
+        orderBy: { startDate: 'asc' },
+        take: 5,
+      }),
+    ]);
 
-    const leaveDaysMap = new Map(
-      leaveDaysForUpcoming.map(ld => [ld.leaveId, ld])
-    );
+    // Process recent leaves
+    const recentLeaves = recentLeavesData.map(leave => ({
+      id: leave.id,
+      leaveNo: leave.leaveNo,
+      type: leave.type,
+      customTypeName: leave.customTypeName,
+      status: leave.status,
+      startDate: leave.startDate.toISOString(),
+      endDate: leave.endDate.toISOString(),
+      daysWorking: leave.daysWorking,
+      rejectionReason: leave.rejectionReason,
+      createdAt: leave.createdAt.toISOString(),
+    }));
 
-    // Process data for each section
-    const recentLeaves = allLeaves
-      .slice(0, 3)
-      .map(leave => ({
-        id: leave.id,
-        leaveNo: leave.leaveNo,
-        type: leave.type,
-        customTypeName: leave.customTypeName,
-        status: leave.status,
-        startDate: leave.startDate.toISOString(),
-        endDate: leave.endDate.toISOString(),
-        daysWorking: leave.daysWorking,
-        rejectionReason: leave.rejectionReason,
-        createdAt: leave.createdAt.toISOString(),
-      }));
-
-    // Stats: aggregate approved leaves in current period
+    // Process stats
     const stats: Record<LeaveType, { count: number; days: number }> = {
       sick: { count: 0, days: 0 },
       personal: { count: 0, days: 0 },
@@ -153,79 +129,50 @@ export async function GET() {
       other: { count: 0, days: 0 },
     };
 
-    allLeaves.forEach(leave => {
-      if (
-        leave.status === 'approved' &&
-        leave.startDate >= currentPeriod.start &&
-        leave.startDate <= currentPeriod.end
-      ) {
-        if (stats[leave.type]) {
-          stats[leave.type].count++;
-          stats[leave.type].days += leave.daysWorking;
-        }
+    statsData.forEach(leave => {
+      if (stats[leave.type]) {
+        stats[leave.type].count++;
+        stats[leave.type].days += leave.daysWorking;
       }
     });
 
-    // Timeline: group by month for current period
-    const monthlyData: Record<string, any[]> = {};
-    let totalDays = 0;
-    let totalCount = 0;
+    // Fetch leaveDays only for upcoming leaves
+    const upcomingLeaveIds = upcomingLeavesData.map(l => l.id);
+    const leaveDaysForUpcoming = upcomingLeaveIds.length > 0
+      ? await prisma.leaveDay.findMany({
+          where: { leaveId: { in: upcomingLeaveIds } },
+          select: {
+            leaveId: true,
+            isHalfDay: true,
+            halfDayPeriod: true,
+          },
+          distinct: ['leaveId'],
+        })
+      : [];
 
-    allLeaves.forEach(leave => {
-      if (
-        ['pending', 'approved', 'rejected'].includes(leave.status) &&
-        leave.startDate >= period.startDate &&
-        leave.startDate <= period.endDate
-      ) {
-        const monthKey = leave.startDate.toISOString().substring(0, 7);
-        if (!monthlyData[monthKey]) {
-          monthlyData[monthKey] = [];
-        }
-        monthlyData[monthKey].push({
-          id: leave.id,
-          leaveNo: leave.leaveNo,
-          type: leave.type,
-          customTypeName: leave.customTypeName,
-          status: leave.status,
-          startDate: leave.startDate.toISOString(),
-          endDate: leave.endDate.toISOString(),
-          daysWorking: leave.daysWorking,
-          isHalfDay: leave.isHalfDay,
-          halfDayPeriod: leave.halfDayPeriod,
-        });
+    const leaveDaysMap = new Map(
+      leaveDaysForUpcoming.map(ld => [ld.leaveId, ld])
+    );
 
-        if (leave.status === 'approved') {
-          totalDays += leave.daysWorking;
-          totalCount += 1;
-        }
-      }
+    // Process upcoming leaves
+    const upcomingLeaves = upcomingLeavesData.map(leave => {
+      const leaveDay = leaveDaysMap.get(leave.id);
+      return {
+        id: leave.id,
+        leaveNo: leave.leaveNo,
+        type: leave.type,
+        customTypeName: leave.customTypeName,
+        status: leave.status,
+        startDate: leave.startDate.toISOString(),
+        endDate: leave.endDate.toISOString(),
+        daysWorking: leave.daysWorking,
+        isHalfDay: leaveDay?.isHalfDay || false,
+        halfDayPeriod: leaveDay?.halfDayPeriod || null,
+      };
     });
 
-    // Upcoming: approved leaves starting in next 30 days
-    const upcomingLeaves = allLeaves
-      .filter(
-        leave =>
-          leave.status === 'approved' &&
-          leave.startDate >= today &&
-          leave.startDate <= futureDate
-      )
-      .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())
-      .slice(0, 5)
-      .map(leave => {
-        const leaveDay = leaveDaysMap.get(leave.id);
-        return {
-          id: leave.id,
-          leaveNo: leave.leaveNo,
-          type: leave.type,
-          customTypeName: leave.customTypeName,
-          status: leave.status,
-          startDate: leave.startDate.toISOString(),
-          endDate: leave.endDate.toISOString(),
-          daysWorking: leave.daysWorking,
-          isHalfDay: leaveDay?.isHalfDay || false,
-          halfDayPeriod: leaveDay?.halfDayPeriod || null,
-        };
-      });
+    // Timeline data - ย้ายไปเป็น separate API endpoint แทน
+    // เพื่อให้ dashboard โหลดเร็วขึ้น
 
     return NextResponse.json(
       {
@@ -237,18 +184,18 @@ export async function GET() {
           periodEnd: currentPeriod.end.toISOString(),
         },
         timeline: {
-          monthlyData,
+          monthlyData: {},
           periodLabel,
           fiscalYear,
           startDate: period.startDate.toISOString(),
           endDate: period.endDate.toISOString(),
-          stats: { totalDays, totalCount },
+          stats: { totalDays: 0, totalCount: 0 },
         },
         upcoming: { leaves: upcomingLeaves },
       },
       {
         headers: {
-          'Cache-Control': 'private, no-cache, no-store, must-revalidate',
+          'Cache-Control': 'private, max-age=30', // Cache 30 วินาที
         },
       }
     );

@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getHrSession } from '@/lib/getSession';
 import { prisma } from '@/lib/prisma';
-import { startOfMonth, endOfMonth, eachDayOfInterval, format, startOfDay, endOfDay } from 'date-fns';
 
-export const revalidate = 60; // Cache 1 minute
+export const dynamic = 'force-dynamic'; // Uses cookies for auth
 
 export async function GET(request: Request) {
   try {
@@ -15,18 +14,6 @@ export async function GET(request: Request) {
         { status: 401 }
       );
     }
-
-    const { searchParams } = new URL(request.url);
-    const yearParam = searchParams.get('year');
-    const monthParam = searchParams.get('month');
-
-    const now = new Date();
-    const year = yearParam ? parseInt(yearParam) : now.getFullYear();
-    const month = monthParam ? parseInt(monthParam) - 1 : now.getMonth();
-
-    const targetDate = new Date(year, month, 1);
-    const monthStart = startOfMonth(targetDate);
-    const monthEnd = endOfMonth(targetDate);
 
     // Get current date in Thailand timezone (UTC+7)
     const nowUTC = new Date();
@@ -41,7 +28,7 @@ export async function GET(request: Request) {
     const tomorrowStart = new Date(Date.UTC(todayYear, todayMonth, todayDate + 1, 0, 0, 0, 0));
     const tomorrowEnd = new Date(Date.UTC(todayYear, todayMonth, todayDate + 1, 23, 59, 59, 999));
 
-    // Execute all queries in parallel
+    // Execute only essential queries in parallel (removed heatmap - it's lazy loaded separately)
     const [
       totalTeachers,
       leavesTodayFull,
@@ -50,7 +37,6 @@ export async function GET(request: Request) {
       pendingCount,
       settings,
       leavesToday,
-      leaveDays,
     ] = await Promise.all([
       // Summary queries
       prisma.teacher.count({
@@ -93,7 +79,20 @@ export async function GET(request: Request) {
           startDate: { lte: todayEnd },
           endDate: { gte: todayStart },
         },
-        include: {
+        select: {
+          id: true,
+          leaveNo: true,
+          type: true,
+          customTypeName: true,
+          startDate: true,
+          endDate: true,
+          daysWorking: true,
+          daysCalendar: true,
+          isHalfDay: true,
+          halfDayPeriod: true,
+          reason: true,
+          contactAddress: true,
+          submittedByType: true,
           teacher: {
             select: {
               id: true,
@@ -109,33 +108,9 @@ export async function GET(request: Request) {
           createdAt: 'desc',
         },
       }),
-
-      // Heatmap data
-      prisma.leaveDay.findMany({
-        where: {
-          date: { gte: monthStart, lte: monthEnd },
-          leave: { status: 'approved' },
-        },
-        include: {
-          leave: {
-            include: {
-              teacher: {
-                select: {
-                  id: true,
-                  teacherCode: true,
-                  title: true,
-                  firstName: true,
-                  lastName: true,
-                  department: true,
-                },
-              },
-            },
-          },
-        },
-      }),
     ]);
 
-    // Calculate exceeding count
+    // Calculate exceeding count (optimized with indexed query)
     const quotaSickPersonal = settings?.quotaSickPersonal || 23;
     const systemStartDate = settings?.systemStartDate || new Date('2026-09-07');
 
@@ -188,57 +163,10 @@ export async function GET(request: Request) {
       submittedByType: leave.submittedByType,
     }));
 
-    // Build heatmap
-    const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
-    const leavesByDate = new Map<string, typeof leaveDays>();
-
-    for (const leaveDay of leaveDays) {
-      const dateKey = format(leaveDay.date, 'yyyy-MM-dd');
-      const existing = leavesByDate.get(dateKey) || [];
-      existing.push(leaveDay);
-      leavesByDate.set(dateKey, existing);
-    }
-
-    const heatmapData = daysInMonth.map((day) => {
-      const dateKey = format(day, 'yyyy-MM-dd');
-      const leaveDaysOnDay = leavesByDate.get(dateKey) || [];
-
-      const uniqueLeaves = new Map();
-      for (const leaveDay of leaveDaysOnDay) {
-        if (!uniqueLeaves.has(leaveDay.leave.id)) {
-          uniqueLeaves.set(leaveDay.leave.id, {
-            id: leaveDay.leave.id,
-            leaveNo: leaveDay.leave.leaveNo,
-            teacher: {
-              id: leaveDay.leave.teacher.id,
-              code: leaveDay.leave.teacher.teacherCode,
-              name: `${leaveDay.leave.teacher.title}${leaveDay.leave.teacher.firstName} ${leaveDay.leave.teacher.lastName}`,
-              department: leaveDay.leave.teacher.department,
-            },
-            type: leaveDay.leave.type,
-            customTypeName: leaveDay.leave.customTypeName,
-            isHalfDay: leaveDay.isHalfDay,
-            halfDayPeriod: leaveDay.halfDayPeriod,
-          });
-        }
-      }
-
-      return {
-        date: dateKey,
-        count: uniqueLeaves.size,
-        leaves: Array.from(uniqueLeaves.values()),
-      };
-    });
-
     return NextResponse.json(
       {
         summary,
         leavesToday: leavesTodayFormatted,
-        heatmap: {
-          year,
-          month: month + 1,
-          heatmap: heatmapData,
-        },
       },
       {
         headers: {

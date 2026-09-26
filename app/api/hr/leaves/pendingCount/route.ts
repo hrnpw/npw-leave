@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getHrSession } from '@/lib/getSession';
 import { prisma } from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic'; // Uses cookies for auth
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getHrSession();

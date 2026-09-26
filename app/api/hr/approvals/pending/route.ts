@@ -3,6 +3,8 @@ import { getHrSession } from '@/lib/getSession';
 import { prisma } from '@/lib/prisma';
 import { formatDateForAPI } from '@/lib/dateFormat';
 
+export const dynamic = 'force-dynamic'; // Uses cookies for auth
+
 /**
  * Get pending leaves for approval
  */
@@ -90,105 +92,161 @@ export async function GET(request: NextRequest) {
       religious: settings?.quotaReligious || 120,
     };
 
-    // Calculate quota usage for each teacher
-    const leavesWithQuota = await Promise.all(
-      leaves.map(async (leave) => {
-        // Get current period
-        const startDate = leave.startDate;
-        const month = startDate.getMonth();
-        let periodStart: Date, periodEnd: Date;
+    // Get unique teacher IDs
+    const teacherIds = [...new Set(leaves.map(l => l.teacherId))];
 
-        if (month >= 3 && month <= 8) {
-          // Period 1: Apr 1 - Sep 30
-          periodStart = new Date(startDate.getFullYear(), 3, 1);
-          periodEnd = new Date(startDate.getFullYear(), 8, 30);
+    // Calculate period ranges for all leaves (group by period)
+    const periodRanges = new Map<string, { start: Date; end: Date }>();
+
+    for (const leave of leaves) {
+      const startDate = leave.startDate;
+      const month = startDate.getMonth();
+      let periodStart: Date, periodEnd: Date;
+
+      if (month >= 3 && month <= 8) {
+        // Period 1: Apr 1 - Sep 30
+        periodStart = new Date(startDate.getFullYear(), 3, 1);
+        periodEnd = new Date(startDate.getFullYear(), 8, 30);
+      } else {
+        // Period 2: Oct 1 - Mar 31
+        if (month >= 9) {
+          periodStart = new Date(startDate.getFullYear(), 9, 1);
+          periodEnd = new Date(startDate.getFullYear() + 1, 2, 31);
         } else {
-          // Period 2: Oct 1 - Mar 31
-          if (month >= 9) {
-            periodStart = new Date(startDate.getFullYear(), 9, 1);
-            periodEnd = new Date(startDate.getFullYear() + 1, 2, 31);
-          } else {
-            periodStart = new Date(startDate.getFullYear() - 1, 9, 1);
-            periodEnd = new Date(startDate.getFullYear(), 2, 31);
-          }
+          periodStart = new Date(startDate.getFullYear() - 1, 9, 1);
+          periodEnd = new Date(startDate.getFullYear(), 2, 31);
         }
+      }
 
-        // Get approved + pending leaves in period
-        const periodLeaves = await prisma.leave.findMany({
-          where: {
-            teacherId: leave.teacherId,
-            status: {
-              in: ['approved', 'pending'],
-            },
-            startDate: {
-              gte: periodStart,
-              lte: periodEnd,
-            },
-          },
-          select: {
-            type: true,
-            daysCalendar: true,
-          },
-        });
+      const key = `${periodStart.getTime()}-${periodEnd.getTime()}`;
+      if (!periodRanges.has(key)) {
+        periodRanges.set(key, { start: periodStart, end: periodEnd });
+      }
+    }
 
-        // Calculate usage
-        let sickPersonalUsed = 0;
-        let maternityUsed = 0;
-        let religiousUsed = 0;
+    // Fetch ALL relevant leaves for these teachers in ONE query
+    const allPeriods = Array.from(periodRanges.values());
+    const minDate = new Date(Math.min(...allPeriods.map(p => p.start.getTime())));
+    const maxDate = new Date(Math.max(...allPeriods.map(p => p.end.getTime())));
 
-        for (const l of periodLeaves) {
-          if (l.type === 'sick' || l.type === 'personal') {
-            sickPersonalUsed += l.daysCalendar;
-          } else if (l.type === 'maternity') {
-            maternityUsed += l.daysCalendar;
-          } else if (l.type === 'religious') {
-            religiousUsed += l.daysCalendar;
-          }
+    const allTeacherLeaves = await prisma.leave.findMany({
+      where: {
+        teacherId: { in: teacherIds },
+        status: { in: ['approved', 'pending'] },
+        startDate: { gte: minDate, lte: maxDate },
+      },
+      select: {
+        teacherId: true,
+        type: true,
+        daysCalendar: true,
+        startDate: true,
+      },
+    });
+
+    // Build a map: teacherId -> period -> usage
+    const usageMap = new Map<string, Map<string, { sickPersonal: number; maternity: number; religious: number }>>();
+
+    for (const tLeave of allTeacherLeaves) {
+      const month = tLeave.startDate.getMonth();
+      let periodStart: Date, periodEnd: Date;
+
+      if (month >= 3 && month <= 8) {
+        periodStart = new Date(tLeave.startDate.getFullYear(), 3, 1);
+        periodEnd = new Date(tLeave.startDate.getFullYear(), 8, 30);
+      } else {
+        if (month >= 9) {
+          periodStart = new Date(tLeave.startDate.getFullYear(), 9, 1);
+          periodEnd = new Date(tLeave.startDate.getFullYear() + 1, 2, 31);
+        } else {
+          periodStart = new Date(tLeave.startDate.getFullYear() - 1, 9, 1);
+          periodEnd = new Date(tLeave.startDate.getFullYear(), 2, 31);
         }
+      }
 
-        // Check if exceeds
-        let exceedsQuota = false;
-        let quotaDetails = null;
+      const periodKey = `${periodStart.getTime()}-${periodEnd.getTime()}`;
 
-        if (leave.type === 'sick' || leave.type === 'personal') {
-          if (sickPersonalUsed > quotas.sickPersonal) {
-            exceedsQuota = true;
-            quotaDetails = {
-              type: 'sickPersonal',
-              used: sickPersonalUsed,
-              quota: quotas.sickPersonal,
-              exceeds: sickPersonalUsed - quotas.sickPersonal,
-            };
-          }
-        } else if (leave.type === 'maternity') {
-          if (maternityUsed > quotas.maternity) {
-            exceedsQuota = true;
-            quotaDetails = {
-              type: 'maternity',
-              used: maternityUsed,
-              quota: quotas.maternity,
-              exceeds: maternityUsed - quotas.maternity,
-            };
-          }
-        } else if (leave.type === 'religious') {
-          if (religiousUsed > quotas.religious) {
-            exceedsQuota = true;
-            quotaDetails = {
-              type: 'religious',
-              used: religiousUsed,
-              quota: quotas.religious,
-              exceeds: religiousUsed - quotas.religious,
-            };
-          }
+      if (!usageMap.has(tLeave.teacherId)) {
+        usageMap.set(tLeave.teacherId, new Map());
+      }
+
+      const teacherMap = usageMap.get(tLeave.teacherId)!;
+      if (!teacherMap.has(periodKey)) {
+        teacherMap.set(periodKey, { sickPersonal: 0, maternity: 0, religious: 0 });
+      }
+
+      const usage = teacherMap.get(periodKey)!;
+      if (tLeave.type === 'sick' || tLeave.type === 'personal') {
+        usage.sickPersonal += tLeave.daysCalendar;
+      } else if (tLeave.type === 'maternity') {
+        usage.maternity += tLeave.daysCalendar;
+      } else if (tLeave.type === 'religious') {
+        usage.religious += tLeave.daysCalendar;
+      }
+    }
+
+    // Calculate quota for each leave (NO more queries!)
+    const leavesWithQuota = leaves.map((leave) => {
+      const startDate = leave.startDate;
+      const month = startDate.getMonth();
+      let periodStart: Date, periodEnd: Date;
+
+      if (month >= 3 && month <= 8) {
+        periodStart = new Date(startDate.getFullYear(), 3, 1);
+        periodEnd = new Date(startDate.getFullYear(), 8, 30);
+      } else {
+        if (month >= 9) {
+          periodStart = new Date(startDate.getFullYear(), 9, 1);
+          periodEnd = new Date(startDate.getFullYear() + 1, 2, 31);
+        } else {
+          periodStart = new Date(startDate.getFullYear() - 1, 9, 1);
+          periodEnd = new Date(startDate.getFullYear(), 2, 31);
         }
+      }
 
-        return {
-          ...leave,
-          exceedsQuota,
-          quotaDetails,
-        };
-      })
-    );
+      const periodKey = `${periodStart.getTime()}-${periodEnd.getTime()}`;
+      const usage = usageMap.get(leave.teacherId)?.get(periodKey) || { sickPersonal: 0, maternity: 0, religious: 0 };
+
+      let exceedsQuota = false;
+      let quotaDetails = null;
+
+      if (leave.type === 'sick' || leave.type === 'personal') {
+        if (usage.sickPersonal > quotas.sickPersonal) {
+          exceedsQuota = true;
+          quotaDetails = {
+            type: 'sickPersonal',
+            used: usage.sickPersonal,
+            quota: quotas.sickPersonal,
+            exceeds: usage.sickPersonal - quotas.sickPersonal,
+          };
+        }
+      } else if (leave.type === 'maternity') {
+        if (usage.maternity > quotas.maternity) {
+          exceedsQuota = true;
+          quotaDetails = {
+            type: 'maternity',
+            used: usage.maternity,
+            quota: quotas.maternity,
+            exceeds: usage.maternity - quotas.maternity,
+          };
+        }
+      } else if (leave.type === 'religious') {
+        if (usage.religious > quotas.religious) {
+          exceedsQuota = true;
+          quotaDetails = {
+            type: 'religious',
+            used: usage.religious,
+            quota: quotas.religious,
+            exceeds: usage.religious - quotas.religious,
+          };
+        }
+      }
+
+      return {
+        ...leave,
+        exceedsQuota,
+        quotaDetails,
+      };
+    });
 
     return NextResponse.json({
       leaves: leavesWithQuota.map((leave) => ({

@@ -5,6 +5,8 @@ import { formatDateForAPI } from '@/lib/dateFormat';
 import type { LeaveStatus, LeaveType } from '@/types/leave';
 import { getFiscalRoundDateRange } from '@/lib/fiscalYear';
 
+export const dynamic = 'force-dynamic'; // Uses cookies for auth
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getHrSession();

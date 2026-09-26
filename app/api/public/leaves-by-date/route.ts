@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import type { LeaveType, HalfDayPeriod } from '@/types/leave';
 
-export const revalidate = 300; // Cache 5 minutes
+export const dynamic = 'force-dynamic'; // Uses searchParams
 
 export async function GET(request: NextRequest) {
   try {

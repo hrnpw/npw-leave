@@ -159,8 +159,8 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
       const year = selectedMonth.getFullYear();
       const month = selectedMonth.getMonth() + 1;
 
-      // Fetch all dashboard data in a single API call
-      const response = await fetch(`/api/hr/dashboard/all?year=${year}&month=${month}`);
+      // Fetch dashboard summary and leaves today (fast)
+      const response = await fetch(`/api/hr/dashboard/all`);
       if (!response.ok) throw new Error('Failed to fetch');
 
       const data = await response.json();
@@ -171,24 +171,27 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
       // Set leaves today
       setLeavesToday(data.leavesToday || []);
 
-      // Only set heatmap data if heatmap is visible
+      // Fetch heatmap separately when visible (lazy load)
       if (isHeatmapVisible) {
         setLoadingHeatmap(true);
-        setHeatmapData(data.heatmap?.heatmap || []);
 
-        // Fetch holidays in parallel (don't block on dashboard data)
-        fetch(`/api/public/holidays?year=${year}&month=${month}`)
-          .then(res => res.json())
-          .then(data => {
+        // Fetch heatmap and holidays in parallel
+        Promise.all([
+          fetch(`/api/hr/dashboard/heatmap?year=${year}&month=${month}`).then(res => res.json()),
+          fetch(`/api/public/holidays?year=${year}&month=${month}`).then(res => res.json()),
+        ])
+          .then(([heatmapData, holidaysData]) => {
+            setHeatmapData(heatmapData.heatmap || []);
+
             const holidayMap = new Map<string, string>(
-              data.holidays.map((h: { date: string; name: string }) => [
+              holidaysData.holidays.map((h: { date: string; name: string }) => [
                 h.date.split('T')[0],
                 h.name
               ])
             );
             setHolidays(holidayMap);
           })
-          .catch(err => console.error('Failed to fetch holidays:', err))
+          .catch(err => console.error('Failed to fetch heatmap:', err))
           .finally(() => setLoadingHeatmap(false));
       }
     } catch (error) {

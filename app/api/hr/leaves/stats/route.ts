@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import type { LeaveStatus, LeaveType } from '@/types/leave';
 import { getFiscalRoundDateRange } from '@/lib/fiscalYear';
 
+export const dynamic = 'force-dynamic'; // Uses cookies for auth
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getHrSession();
@@ -84,28 +86,39 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Get counts by status
-    const [pending, approved, rejected] = await Promise.all([
-      prisma.leave.count({ where: { ...where, status: 'pending' } }),
-      prisma.leave.count({ where: { ...where, status: 'approved' } }),
-      prisma.leave.count({ where: { ...where, status: 'rejected' } }),
-    ]);
+    // Use single groupBy query instead of 8 separate counts
+    const allLeaves = await prisma.leave.findMany({
+      where,
+      select: {
+        status: true,
+        type: true,
+      },
+    });
 
-    // Get counts by type
-    const [sick, personal, maternity, religious, other] = await Promise.all([
-      prisma.leave.count({ where: { ...where, type: 'sick' } }),
-      prisma.leave.count({ where: { ...where, type: 'personal' } }),
-      prisma.leave.count({ where: { ...where, type: 'maternity' } }),
-      prisma.leave.count({ where: { ...where, type: 'religious' } }),
-      prisma.leave.count({ where: { ...where, type: 'other' } }),
-    ]);
+    // Calculate counts in memory (faster than 8 DB queries)
+    let pending = 0, approved = 0, rejected = 0;
+    let sick = 0, personal = 0, maternity = 0, religious = 0, other = 0;
+
+    for (const leave of allLeaves) {
+      // Count by status
+      if (leave.status === 'pending') pending++;
+      else if (leave.status === 'approved') approved++;
+      else if (leave.status === 'rejected') rejected++;
+
+      // Count by type
+      if (leave.type === 'sick') sick++;
+      else if (leave.type === 'personal') personal++;
+      else if (leave.type === 'maternity') maternity++;
+      else if (leave.type === 'religious') religious++;
+      else if (leave.type === 'other') other++;
+    }
 
     return NextResponse.json({
       byStatus: {
         pending,
         approved,
         rejected,
-        total: pending + approved + rejected,
+        total: allLeaves.length,
       },
       byType: {
         sick,

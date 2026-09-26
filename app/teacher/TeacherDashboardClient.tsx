@@ -126,18 +126,39 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
 
       setRecentLeaves(data.recent?.leaves || []);
       setStats(data.stats?.stats || {});
-      setTimeline({
-        monthlyData: data.timeline?.monthlyData || {},
-        periodLabel: data.timeline?.periodLabel || '',
-        fiscalYear: data.timeline?.fiscalYear || 0,
-        stats: data.timeline?.stats || { totalDays: 0, totalCount: 0 },
-      });
       setUpcomingLeaves(data.upcoming?.leaves || []);
+
+      // Lazy load timeline data separately
+      fetchTimelineData();
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
       toast.error('ไม่สามารถโหลดข้อมูลได้');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTimelineData = async () => {
+    try {
+      const data = await fetchCache.fetch('/api/teacher/leaves/timeline-lazy', {
+        cacheDuration: 60000, // 60 seconds cache
+      });
+
+      setTimeline({
+        monthlyData: data.monthlyData || {},
+        periodLabel: data.periodLabel || '',
+        fiscalYear: data.fiscalYear || 0,
+        stats: data.stats || { totalDays: 0, totalCount: 0 },
+      });
+    } catch (error) {
+      console.error('Failed to fetch timeline data:', error);
+      // Don't show error toast for timeline - it's non-critical
+      setTimeline({
+        monthlyData: {},
+        periodLabel: '',
+        fiscalYear: 0,
+        stats: { totalDays: 0, totalCount: 0 },
+      });
     }
   };
 

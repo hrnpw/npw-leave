@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import { Toaster } from 'sonner';
+import { Analytics } from '@vercel/analytics/next';
 import { PWARegister } from '@/components/PWARegister';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
@@ -73,6 +74,7 @@ export default function RootLayout({
         {children}
         <PWAInstallPrompt />
         <Toaster position="top-center" richColors />
+        <Analytics />
       </body>
     </html>
   );
