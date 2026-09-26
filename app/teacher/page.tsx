@@ -1,9 +1,8 @@
 import { validateTeacherSession } from '@/lib/validateSession';
 import { redirect } from 'next/navigation';
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
-
-const TeacherDashboardClient = lazy(() => import('./TeacherDashboardClient'));
+import TeacherDashboardClient from './TeacherDashboardClient';
 
 function LoadingFallback() {
   return (

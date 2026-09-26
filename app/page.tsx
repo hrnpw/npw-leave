@@ -11,6 +11,7 @@ import { HeatmapCalendar } from '@/components/HeatmapCalendar';
 import { formatFullThaiDate } from '@/lib/thaiDate';
 import { LEAVE_TYPE_LABELS, LEAVE_TYPE_COLORS, HALF_DAY_PERIOD_LABELS } from '@/types/leave';
 import type { LeaveType, HalfDayPeriod } from '@/types/leave';
+import { fetchCache } from '@/lib/fetchCache';
 
 interface PublicSummary {
   date: string;
@@ -72,6 +73,7 @@ export default function HomePage() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const initialLoadRef = useRef(false);
+  const initialDateRef = useRef(new Date().getTime());
 
   useEffect(() => {
     if (!initialLoadRef.current) {
@@ -82,7 +84,8 @@ export default function HomePage() {
 
   useEffect(() => {
     // Only fetch heatmap when month changes (not on initial load)
-    if (initialLoadRef.current && currentHeatmapDate.getTime() !== new Date().getTime()) {
+    const currentTime = currentHeatmapDate.getTime();
+    if (initialLoadRef.current && currentTime !== initialDateRef.current) {
       fetchHeatmapData(currentHeatmapDate);
     }
   }, [currentHeatmapDate]);
@@ -96,22 +99,18 @@ export default function HomePage() {
       const year = today.getFullYear();
       const month = today.getMonth() + 1;
 
-      // Single API call for all data (summary + heatmap + holidays)
-      const response = await fetch(`/api/public/dashboard?year=${year}&month=${month}`);
-      if (!response.ok) {
-        throw new Error(response.status === 500
-          ? 'เซิร์ฟเวอร์ขัดข้อง กรุณาลองใหม่อีกครั้ง'
-          : 'ไม่สามารถโหลดข้อมูลได้'
-        );
-      }
-
-      const data = await response.json();
+      // Use fetchCache for deduplication and caching
+      const data = await fetchCache.fetch(
+        `/api/public/dashboard?year=${year}&month=${month}`,
+        { cacheDuration: 60000 } // 60 seconds cache
+      );
 
       // Update all states from single response
       setSummary(data.summary);
       setHeatmapData(data.heatmap);
       setHolidays(data.holidays);
       setCurrentHeatmapDate(today);
+      initialDateRef.current = today.getTime();
       setLastRefresh(new Date());
     } catch (err) {
       const message = err instanceof Error ? err.message : 'ไม่สามารถโหลดข้อมูลได้';
@@ -124,6 +123,8 @@ export default function HomePage() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
+    // Clear cache before refresh to force new data
+    fetchCache.clear('/api/public/dashboard');
     await fetchData();
     setIsRefreshing(false);
   };
@@ -133,17 +134,18 @@ export default function HomePage() {
       const year = date.getFullYear();
       const month = date.getMonth() + 1;
 
-      // Fetch combined data (heatmap + holidays)
-      const response = await fetch(`/api/public/dashboard?year=${year}&month=${month}`);
-      if (response.ok) {
-        const data = await response.json();
-        setHeatmapData(data.heatmap);
-        setHolidays(data.holidays);
-        // Update summary only if it's current month
-        const now = new Date();
-        if (year === now.getFullYear() && month === now.getMonth() + 1) {
-          setSummary(data.summary);
-        }
+      // Use fetchCache for deduplication
+      const data = await fetchCache.fetch(
+        `/api/public/dashboard?year=${year}&month=${month}`,
+        { cacheDuration: 60000 }
+      );
+
+      setHeatmapData(data.heatmap);
+      setHolidays(data.holidays);
+      // Update summary only if it's current month
+      const now = new Date();
+      if (year === now.getFullYear() && month === now.getMonth() + 1) {
+        setSummary(data.summary);
       }
     } catch (err) {
       console.error('Failed to fetch heatmap:', err);

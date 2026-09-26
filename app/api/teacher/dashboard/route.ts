@@ -94,18 +94,39 @@ export async function GET() {
         halfDayPeriod: true,
         rejectionReason: true,
         createdAt: true,
-        leaveDays: {
-          select: {
-            isHalfDay: true,
-            halfDayPeriod: true,
-          },
-          take: 1,
-        },
       },
       orderBy: {
         createdAt: 'desc',
       },
     });
+
+    // Fetch leaveDays only for upcoming leaves (optimization)
+    const upcomingLeaveIds = allLeaves
+      .filter(
+        leave =>
+          leave.status === 'approved' &&
+          leave.startDate >= today &&
+          leave.startDate <= futureDate
+      )
+      .map(l => l.id);
+
+    const leaveDaysForUpcoming = upcomingLeaveIds.length > 0
+      ? await prisma.leaveDay.findMany({
+          where: {
+            leaveId: { in: upcomingLeaveIds },
+          },
+          select: {
+            leaveId: true,
+            isHalfDay: true,
+            halfDayPeriod: true,
+          },
+          take: upcomingLeaveIds.length, // One per leave
+        })
+      : [];
+
+    const leaveDaysMap = new Map(
+      leaveDaysForUpcoming.map(ld => [ld.leaveId, ld])
+    );
 
     // Process data for each section
     const recentLeaves = allLeaves
@@ -190,18 +211,21 @@ export async function GET() {
       )
       .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())
       .slice(0, 5)
-      .map(leave => ({
-        id: leave.id,
-        leaveNo: leave.leaveNo,
-        type: leave.type,
-        customTypeName: leave.customTypeName,
-        status: leave.status,
-        startDate: leave.startDate.toISOString(),
-        endDate: leave.endDate.toISOString(),
-        daysWorking: leave.daysWorking,
-        isHalfDay: leave.leaveDays[0]?.isHalfDay || false,
-        halfDayPeriod: leave.leaveDays[0]?.halfDayPeriod || null,
-      }));
+      .map(leave => {
+        const leaveDay = leaveDaysMap.get(leave.id);
+        return {
+          id: leave.id,
+          leaveNo: leave.leaveNo,
+          type: leave.type,
+          customTypeName: leave.customTypeName,
+          status: leave.status,
+          startDate: leave.startDate.toISOString(),
+          endDate: leave.endDate.toISOString(),
+          daysWorking: leave.daysWorking,
+          isHalfDay: leaveDay?.isHalfDay || false,
+          halfDayPeriod: leaveDay?.halfDayPeriod || null,
+        };
+      });
 
     return NextResponse.json(
       {

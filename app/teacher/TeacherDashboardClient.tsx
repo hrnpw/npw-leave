@@ -12,6 +12,7 @@ import { LEAVE_TYPE_LABELS, LEAVE_STATUS_LABELS, LEAVE_TYPE_COLORS, LEAVE_STATUS
 import type { LeaveType, LeaveStatus } from '@/types/leave';
 import { format, parseISO, isFuture, differenceInDays } from 'date-fns';
 import { th } from 'date-fns/locale';
+import { fetchCache } from '@/lib/fetchCache';
 
 // Lazy load Timeline component
 const TimelineSection = lazy(() => import('./components/TimelineSection'));
@@ -92,12 +93,17 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
   const [selectedStatType, setSelectedStatType] = useState<LeaveType | null>(null);
   const [statModalLeaves, setStatModalLeaves] = useState<RecentLeave[]>([]);
   const [loadingStatModal, setLoadingStatModal] = useState(false);
+  const initialLoadRef = useRef(false);
 
   // Check if first time user (no leaves ever)
   const isFirstTimeUser = !loading && recentLeaves.length === 0;
   const hasNoLeavesThisPeriod = stats && Object.values(stats).every(s => s.count === 0);
 
   useEffect(() => {
+    // Prevent double fetch on mount
+    if (initialLoadRef.current) return;
+    initialLoadRef.current = true;
+
     fetchDashboardData();
 
     // Check if returning from successful leave submission
@@ -113,24 +119,20 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
     try {
       setLoading(true);
 
-      // Single API call for all dashboard data
-      const res = await fetch('/api/teacher/dashboard');
+      // Use fetchCache for deduplication and caching
+      const data = await fetchCache.fetch('/api/teacher/dashboard', {
+        cacheDuration: 30000, // 30 seconds cache
+      });
 
-      if (res.ok) {
-        const data = await res.json();
-
-        setRecentLeaves(data.recent?.leaves || []);
-        setStats(data.stats?.stats || {});
-        setTimeline({
-          monthlyData: data.timeline?.monthlyData || {},
-          periodLabel: data.timeline?.periodLabel || '',
-          fiscalYear: data.timeline?.fiscalYear || 0,
-          stats: data.timeline?.stats || { totalDays: 0, totalCount: 0 },
-        });
-        setUpcomingLeaves(data.upcoming?.leaves || []);
-      } else {
-        toast.error('ไม่สามารถโหลดข้อมูลได้');
-      }
+      setRecentLeaves(data.recent?.leaves || []);
+      setStats(data.stats?.stats || {});
+      setTimeline({
+        monthlyData: data.timeline?.monthlyData || {},
+        periodLabel: data.timeline?.periodLabel || '',
+        fiscalYear: data.timeline?.fiscalYear || 0,
+        stats: data.timeline?.stats || { totalDays: 0, totalCount: 0 },
+      });
+      setUpcomingLeaves(data.upcoming?.leaves || []);
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
       toast.error('ไม่สามารถโหลดข้อมูลได้');
@@ -203,6 +205,8 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
   const handleTouchEnd = async () => {
     if (pullDistance > 100) {
       setIsRefreshing(true);
+      // Clear cache before refresh
+      fetchCache.clear('/api/teacher/dashboard');
       await fetchDashboardData();
       setIsRefreshing(false);
     }
