@@ -95,23 +95,30 @@ export default function HomePage() {
       setLoading(true);
       setError(null);
 
+      // Fetch summary first (fast - above the fold)
+      const summaryData = await fetchCache.fetch(
+        '/api/public/summary',
+        { cacheDuration: 60000 } // 60 seconds cache
+      );
+
+      setSummary(summaryData);
+      setLastRefresh(new Date());
+      setLoading(false); // Show content immediately
+
+      // Then fetch heatmap (slower - below the fold)
       const today = new Date();
       const year = today.getFullYear();
       const month = today.getMonth() + 1;
 
-      // Use fetchCache for deduplication and caching
-      const data = await fetchCache.fetch(
+      const heatmapData = await fetchCache.fetch(
         `/api/public/dashboard?year=${year}&month=${month}`,
-        { cacheDuration: 60000 } // 60 seconds cache
+        { cacheDuration: 60000 }
       );
 
-      // Update all states from single response
-      setSummary(data.summary);
-      setHeatmapData(data.heatmap);
-      setHolidays(data.holidays);
+      setHeatmapData(heatmapData.heatmap);
+      setHolidays(heatmapData.holidays);
       setCurrentHeatmapDate(today);
       initialDateRef.current = today.getTime();
-      setLastRefresh(new Date());
     } catch (err) {
       const message = err instanceof Error ? err.message : 'ไม่สามารถโหลดข้อมูลได้';
       setError(message);
@@ -123,7 +130,8 @@ export default function HomePage() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    // Clear cache before refresh to force new data
+    // Clear both caches before refresh
+    fetchCache.clear('/api/public/summary');
     fetchCache.clear('/api/public/dashboard');
     await fetchData();
     setIsRefreshing(false);

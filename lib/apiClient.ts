@@ -37,19 +37,19 @@ export async function apiClient<T>(
         case 400:
           throw new ApiError(errorMessage, 400, errorData);
         case 401:
-          // Session expired or invalid - clear cookie and redirect
+          // Session expired or invalid - clear cookie and redirect to home
           if (typeof window !== 'undefined') {
             const currentPath = window.location.pathname;
 
             // Determine which session type and redirect accordingly
             if (currentPath.startsWith('/hr')) {
-              // HR session expired
+              // HR session expired - redirect to home page
               document.cookie = 'hr_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
-              window.location.href = `/hr/login?returnUrl=${encodeURIComponent(currentPath)}`;
+              window.location.href = '/';
             } else if (currentPath.startsWith('/teacher')) {
-              // Teacher session expired
+              // Teacher session expired - redirect to home page
               document.cookie = 'teacher_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
-              window.location.href = `/verify?returnUrl=${encodeURIComponent(currentPath)}`;
+              window.location.href = '/';
             }
           }
           throw new ApiError('กรุณาเข้าสู่ระบบใหม่', 401);

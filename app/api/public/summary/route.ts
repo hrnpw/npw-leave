@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-// Cache for 60 seconds
+// Enable ISR with 60 seconds revalidation
 export const revalidate = 60;
 
 interface LeaveTypeCount {
@@ -19,13 +19,16 @@ interface LeaveTypeCount {
   }[];
 }
 
+/**
+ * GET /api/public/summary
+ * Fast endpoint for above-the-fold data only
+ */
 export async function GET() {
   try {
-    // Get current date in Thailand timezone (UTC+7)
+    // Get current date in Thailand timezone
     const nowUTC = new Date();
     const nowThailand = new Date(nowUTC.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
 
-    // Create UTC dates for today and tomorrow (midnight UTC, representing the calendar day)
     const todayYear = nowThailand.getFullYear();
     const todayMonth = nowThailand.getMonth();
     const todayDate = nowThailand.getDate();
@@ -35,66 +38,67 @@ export async function GET() {
     const tomorrowStart = new Date(Date.UTC(todayYear, todayMonth, todayDate + 1, 0, 0, 0, 0));
     const tomorrowEnd = new Date(Date.UTC(todayYear, todayMonth, todayDate + 1, 23, 59, 59, 999));
 
-    // Get total active teachers
-    const totalTeachers = await prisma.teacher.count({
-      where: { isActive: true },
-    });
+    // Parallel queries - only essential data
+    const [
+      totalTeachers,
+      todayHoliday,
+      tomorrowHoliday,
+      leavesToday,
+      leavesTomorrow,
+    ] = await Promise.all([
+      // 1. Total active teachers
+      prisma.teacher.count({
+        where: { isActive: true },
+      }),
 
-    // Check if today is a holiday
-    const todayHoliday = await prisma.holiday.findUnique({
-      where: { date: todayStart },
-      select: { name: true },
-    });
+      // 2. Today's holiday
+      prisma.holiday.findUnique({
+        where: { date: todayStart },
+        select: { name: true },
+      }),
 
-    // Check if tomorrow is a holiday
-    const tomorrowHoliday = await prisma.holiday.findUnique({
-      where: { date: tomorrowStart },
-      select: { name: true },
-    });
+      // 3. Tomorrow's holiday
+      prisma.holiday.findUnique({
+        where: { date: tomorrowStart },
+        select: { name: true },
+      }),
 
-    // Get leaves for today (approved only, full day or any half day)
-    const leavesToday = await prisma.leave.findMany({
-      where: {
-        status: 'approved',
-        startDate: { lte: todayEnd },
-        endDate: { gte: todayStart },
-      },
-      select: {
-        id: true,
-        type: true,
-        customTypeName: true,
-        isHalfDay: true,
-        halfDayPeriod: true,
-        teacher: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            teacherCode: true,
-            department: true,
+      // 4. Leaves for today
+      prisma.leave.findMany({
+        where: {
+          status: 'approved',
+          startDate: { lte: todayEnd },
+          endDate: { gte: todayStart },
+        },
+        select: {
+          id: true,
+          type: true,
+          customTypeName: true,
+          isHalfDay: true,
+          halfDayPeriod: true,
+          teacher: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              teacherCode: true,
+              department: true,
+            },
           },
         },
-      },
-    });
+      }),
 
-    // Get leaves for tomorrow (approved only)
-    const leavesTomorrow = await prisma.leave.findMany({
-      where: {
-        status: 'approved',
-        startDate: { lte: tomorrowEnd },
-        endDate: { gte: tomorrowStart },
-      },
-      select: {
-        id: true,
-        teacher: {
-          select: {
-            id: true,
-          },
+      // 5. Leaves for tomorrow (just count)
+      prisma.leave.count({
+        where: {
+          status: 'approved',
+          startDate: { lte: tomorrowEnd },
+          endDate: { gte: tomorrowStart },
         },
-      },
-    });
+      }),
+    ]);
 
-    // Count full-day leaves for today (to calculate attendance)
+    // Process summary data
     const fullDayLeavesToday = leavesToday.filter(leave => !leave.isHalfDay);
     const attendingToday = totalTeachers - fullDayLeavesToday.length;
 
@@ -127,23 +131,29 @@ export async function GET() {
       });
     });
 
-    // Convert to array and sort by count (descending)
     const leavesGrouped = Object.values(leavesByType).sort((a, b) => b.count - a.count);
 
-    return NextResponse.json({
-      date: nowUTC.toISOString(),
-      totalTeachers,
-      attendingToday,
-      leavesToday: leavesToday.length,
-      leavesTomorrow: leavesTomorrow.length,
-      todayHoliday: todayHoliday?.name || null,
-      tomorrowHoliday: tomorrowHoliday?.name || null,
-      leavesByType: leavesGrouped,
-    });
-  } catch (error) {
-    console.error('Public summary error:', error);
     return NextResponse.json(
-      { error: 'เกิดข้อผิดพลาดในการโหลดข้อมูล' },
+      {
+        date: nowUTC.toISOString(),
+        totalTeachers,
+        attendingToday,
+        leavesToday: leavesToday.length,
+        leavesTomorrow,
+        todayHoliday: todayHoliday?.name || null,
+        tomorrowHoliday: tomorrowHoliday?.name || null,
+        leavesByType: leavesGrouped,
+      },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+        },
+      }
+    );
+  } catch (error) {
+    console.error('Public summary API error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
