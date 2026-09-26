@@ -112,8 +112,7 @@ export default function VerifyClient() {
     setError('');
 
     try {
-      // Delete old cookie before verify
-      document.cookie = 'teacher_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      console.log('[Verify] Starting verification process');
 
       const response = await fetch('/api/auth/teacher/verify', {
         method: 'POST',
@@ -122,6 +121,7 @@ export default function VerifyClient() {
           citizenId: formData.citizenId,
           birthDate,
         }),
+        credentials: 'include', // Ensure cookies are included
       });
 
       const data = await response.json();
@@ -147,9 +147,13 @@ export default function VerifyClient() {
         description: `ยินดีต้อนรับ ${data.teacher?.firstName || ''} ${data.teacher?.lastName || ''}`,
       });
 
-      // Wait for cookie to be set before navigation
+      console.log('[Verify] Login successful, redirecting to:', returnUrl);
+
+      // Wait a bit for cookie to be fully set
+      await new Promise(resolve => setTimeout(resolve, 300));
+
       // Use full page reload to ensure middleware sees the cookie
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Note: Cookie is httpOnly so we can't check it with document.cookie
       window.location.href = returnUrl;
     } catch (err) {
       setError('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');

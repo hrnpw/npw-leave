@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { getIronSession } from 'iron-session';
 import { prisma } from '@/lib/prisma';
 import { validateCitizenId, normalizeCitizenId } from '@/lib/citizenId';
-import { getTeacherSession } from '@/lib/getSession';
+import { teacherSessionOptions, TeacherSession } from '@/lib/session';
 
 const verifySchema = z.object({
   citizenId: z.string().length(13),
@@ -68,22 +69,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Success - create session
-    const session = await getTeacherSession();
-    session.id = teacher.id;
-    session.teacherCode = teacher.teacherCode;
-    session.firstName = teacher.firstName;
-    session.lastName = teacher.lastName;
-    session.createdAt = Date.now();
-    await session.save();
-
-    console.log('[Verify API] Session created:', {
-      id: session.id,
-      teacherCode: session.teacherCode,
-      createdAt: session.createdAt
-    });
-
-    return NextResponse.json({
+    // Success - create session with proper cookie handling
+    const response = NextResponse.json({
       success: true,
       teacher: {
         id: teacher.id,
@@ -92,6 +79,25 @@ export async function POST(request: NextRequest) {
         lastName: teacher.lastName,
       },
     });
+
+    // IMPORTANT: Must pass request and response to iron-session for cookie headers
+    const session = await getIronSession<TeacherSession>(request, response, teacherSessionOptions);
+    session.id = teacher.id;
+    session.teacherCode = teacher.teacherCode;
+    session.firstName = teacher.firstName;
+    session.lastName = teacher.lastName;
+    session.createdAt = Date.now();
+    await session.save();
+
+    console.log('[Verify API] Session created and saved:', {
+      id: session.id,
+      teacherCode: session.teacherCode,
+      createdAt: session.createdAt,
+      timestamp: new Date().toISOString(),
+      cookieHeaders: response.headers.get('set-cookie')
+    });
+
+    return response;
   } catch (error) {
     console.error('Teacher verify error:', error);
     return NextResponse.json(

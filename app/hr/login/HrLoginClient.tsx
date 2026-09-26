@@ -39,13 +39,13 @@ export default function HrLoginClient() {
     }
 
     try {
-      // Clear old cookie before login to prevent stale session
-      document.cookie = 'hr_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      console.log('[HR Login] Starting login process');
 
       const response = await fetch('/api/auth/hr/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
+        credentials: 'include', // Ensure cookies are included
       });
 
       const data = await response.json();
@@ -61,9 +61,13 @@ export default function HrLoginClient() {
         description: `ยินดีต้อนรับ คุณ${data.user?.firstName || ''}`
       });
 
-      // Wait for cookie to be set before navigation
+      console.log('[HR Login] Login successful, redirecting to:', returnUrl);
+
+      // Wait a bit for cookie to be fully set
+      await new Promise(resolve => setTimeout(resolve, 300));
+
       // Use full page reload to ensure middleware sees the cookie
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Note: Cookie is httpOnly so we can't check it with document.cookie
       window.location.href = returnUrl;
     } catch (err: any) {
       let errorMsg = 'เข้าสู่ระบบไม่สำเร็จ';

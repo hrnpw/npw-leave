@@ -14,7 +14,8 @@ export default async function VerifyPage() {
 
   // Clear expired session if exists
   if (session.id && session.createdAt && isSessionExpired(session.createdAt)) {
-    session.destroy();
+    await session.destroy();
+    console.log('[Verify Page] Destroyed expired session');
   }
 
   return (

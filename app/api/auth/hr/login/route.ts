@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { getIronSession } from 'iron-session';
 import { prisma } from '@/lib/prisma';
 import { verifyPassword } from '@/lib/auth';
-import { getHrSession } from '@/lib/getSession';
+import { hrSessionOptions, HrSession } from '@/lib/session';
 
 const loginSchema = z.object({
   username: z.string().min(1),
@@ -58,8 +59,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create session first (critical path)
-    const session = await getHrSession();
+    // Create session with proper cookie handling
+    const response = NextResponse.json({
+      success: true,
+      user: {
+        id: hrUser.id,
+        username: hrUser.username,
+        firstName: hrUser.firstName,
+        lastName: hrUser.lastName,
+        role: hrUser.role,
+      },
+    });
+
+    // IMPORTANT: Must pass request and response to iron-session for cookie headers
+    const session = await getIronSession<HrSession>(request, response, hrSessionOptions);
     session.id = hrUser.id;
     session.username = hrUser.username;
     session.firstName = hrUser.firstName;
@@ -67,6 +80,15 @@ export async function POST(request: NextRequest) {
     session.role = hrUser.role;
     session.createdAt = Date.now();
     await session.save();
+
+    console.log('[HR Login API] Session created and saved:', {
+      id: session.id,
+      username: session.username,
+      role: session.role,
+      createdAt: session.createdAt,
+      timestamp: new Date().toISOString(),
+      cookieHeaders: response.headers.get('set-cookie')
+    });
 
     // Update last login (non-critical - don't block response if it fails)
     prisma.hrUser.update({
@@ -80,16 +102,7 @@ export async function POST(request: NextRequest) {
       // Don't throw - session is already created
     });
 
-    return NextResponse.json({
-      success: true,
-      user: {
-        id: hrUser.id,
-        username: hrUser.username,
-        firstName: hrUser.firstName,
-        lastName: hrUser.lastName,
-        role: hrUser.role,
-      },
-    });
+    return response;
   } catch (error) {
     console.error('HR login error:', error);
     return NextResponse.json(

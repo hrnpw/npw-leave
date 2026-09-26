@@ -14,7 +14,8 @@ export default async function HrLoginPage() {
 
   // Clear expired session if exists
   if (session.id && session.createdAt && isSessionExpired(session.createdAt)) {
-    session.destroy();
+    await session.destroy();
+    console.log('[HR Login Page] Destroyed expired session');
   }
 
   return (
