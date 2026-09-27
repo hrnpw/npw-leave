@@ -39,7 +39,7 @@ export async function POST(
       );
     }
 
-    // Get current signatories
+    // Get current signatories (parallel queries for speed)
     const settings = await prisma.settings.findUnique({
       where: { id: 'singleton' },
     });
@@ -47,28 +47,28 @@ export async function POST(
     let approverSnapshot = null;
     let directorSnapshot = null;
 
-    if (settings?.currentHrHeadId) {
-      const hrHead = await prisma.signatory.findUnique({
-        where: { id: settings.currentHrHeadId },
-      });
-      if (hrHead) {
-        approverSnapshot = {
-          name: `${hrHead.title}${hrHead.firstName} ${hrHead.lastName}`,
-          position: hrHead.position,
-        };
-      }
+    // Fetch both signatories in parallel
+    const [hrHead, director] = await Promise.all([
+      settings?.currentHrHeadId
+        ? prisma.signatory.findUnique({ where: { id: settings.currentHrHeadId } })
+        : null,
+      settings?.currentDirectorId
+        ? prisma.signatory.findUnique({ where: { id: settings.currentDirectorId } })
+        : null,
+    ]);
+
+    if (hrHead) {
+      approverSnapshot = {
+        name: `${hrHead.title}${hrHead.firstName} ${hrHead.lastName}`,
+        position: hrHead.position,
+      };
     }
 
-    if (settings?.currentDirectorId) {
-      const director = await prisma.signatory.findUnique({
-        where: { id: settings.currentDirectorId },
-      });
-      if (director) {
-        directorSnapshot = {
-          name: `${director.title}${director.firstName} ${director.lastName}`,
-          position: director.position,
-        };
-      }
+    if (director) {
+      directorSnapshot = {
+        name: `${director.title}${director.firstName} ${director.lastName}`,
+        position: director.position,
+      };
     }
 
     // Update leave (step 1: approve)
@@ -89,7 +89,8 @@ export async function POST(
     });
 
     // Step 2: Fire-and-forget PDF generation (background)
-    try {
+    // Use setTimeout to truly detach from request lifecycle
+    setTimeout(() => {
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
       const pdfGenUrl = `${baseUrl}/api/hr/leaves/${updatedLeave.id}/generate-pdf`;
 
@@ -102,12 +103,10 @@ export async function POST(
           'x-internal-api-key': process.env.INTERNAL_API_KEY || '',
         },
       }).catch((err) => console.error('[APPROVE] PDF generation failed (non-blocking):', err));
-    } catch (pdfError) {
-      console.error('[APPROVE] PDF trigger error (non-blocking):', pdfError);
-    }
+    }, 0);
 
-    // Step 3: Audit log
-    await createAuditLog({
+    // Step 3: Audit log (fire-and-forget - don't block response)
+    createAuditLog({
       userId: session.id,
       userType: 'hr',
       action: 'APPROVE_LEAVE',
@@ -126,7 +125,7 @@ export async function POST(
       },
       ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined,
       userAgent: request.headers.get('user-agent') || undefined,
-    });
+    }).catch(err => console.error('[APPROVE] Audit log failed (non-blocking):', err));
 
     return NextResponse.json({
       success: true,
