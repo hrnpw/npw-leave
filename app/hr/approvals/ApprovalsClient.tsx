@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -91,9 +91,37 @@ export default function ApprovalsClient({ hrUser }: ApprovalsClientProps) {
   const [pullStartY, setPullStartY] = useState(0);
   const [pullDistance, setPullDistance] = useState(0);
 
+  const fetchPendingLeaves = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/hr/approvals/pending');
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'ไม่สามารถโหลดข้อมูลได้');
+      }
+
+      const data = await res.json();
+      setLeaves(data.leaves);
+    } catch (error: any) {
+      console.error('Failed to fetch pending leaves:', error);
+
+      let errorMsg = 'ไม่สามารถโหลดรายการรออนุมัติได้';
+      let errorDesc = 'กรุณาลองอีกครั้ง หรือรีเฟรชหน้าเว็บ';
+
+      if (error.message === 'Failed to fetch') {
+        errorMsg = 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์';
+        errorDesc = 'ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วลองอีกครั้ง';
+      }
+
+      toast.error(errorMsg, { description: errorDesc });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchPendingLeaves();
-  }, []);
+  }, [fetchPendingLeaves]);
 
   // Auto-refresh every 60 seconds
   useEffect(() => {
@@ -102,7 +130,7 @@ export default function ApprovalsClient({ hrUser }: ApprovalsClientProps) {
     }, 60000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchPendingLeaves]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -174,34 +202,6 @@ export default function ApprovalsClient({ hrUser }: ApprovalsClientProps) {
       document.removeEventListener('touchend', handleTouchEnd);
     };
   }, [pullDistance, pullStartY]);
-
-  const fetchPendingLeaves = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch('/api/hr/approvals/pending');
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'ไม่สามารถโหลดข้อมูลได้');
-      }
-
-      const data = await res.json();
-      setLeaves(data.leaves);
-    } catch (error: any) {
-      console.error('Failed to fetch pending leaves:', error);
-
-      let errorMsg = 'ไม่สามารถโหลดรายการรออนุมัติได้';
-      let errorDesc = 'กรุณาลองอีกครั้ง หรือรีเฟรชหน้าเว็บ';
-
-      if (error.message === 'Failed to fetch') {
-        errorMsg = 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์';
-        errorDesc = 'ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วลองอีกครั้ง';
-      }
-
-      toast.error(errorMsg, { description: errorDesc });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleApprove = (leave: PendingLeave) => {
     setApprovingLeave(leave);
