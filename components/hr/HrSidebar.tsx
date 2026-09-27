@@ -31,35 +31,10 @@ interface HrSidebarProps {
   pendingCount?: number;
 }
 
-export default function HrSidebar({ hrUser, pendingCount: initialCount = 0 }: HrSidebarProps) {
+export default function HrSidebar({ hrUser, pendingCount = 0 }: HrSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
-  const [pendingCount, setPendingCount] = useState(initialCount);
-
-  // Fetch pending count on mount and every 60 seconds
-  useEffect(() => {
-    const fetchPendingCount = async () => {
-      try {
-        const res = await fetch('/api/hr/leaves/pendingCount');
-        if (res.ok) {
-          const data = await res.json();
-          setPendingCount(data.count || 0);
-        }
-      } catch (error) {
-        // Silent fail - don't disturb UX
-        console.error('Failed to fetch pending count:', error);
-      }
-    };
-
-    // Fetch immediately
-    fetchPendingCount();
-
-    // Fetch every 60 seconds
-    const interval = setInterval(fetchPendingCount, 60000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   const handleLogout = async () => {
     try {

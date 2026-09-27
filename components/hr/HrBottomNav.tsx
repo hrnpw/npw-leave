@@ -9,33 +9,8 @@ interface HrBottomNavProps {
   pendingCount?: number;
 }
 
-export default function HrBottomNav({ pendingCount: initialCount = 0 }: HrBottomNavProps) {
+export default function HrBottomNav({ pendingCount = 0 }: HrBottomNavProps) {
   const pathname = usePathname();
-  const [pendingCount, setPendingCount] = useState(initialCount);
-
-  // Fetch pending count on mount and every 60 seconds
-  useEffect(() => {
-    const fetchPendingCount = async () => {
-      try {
-        const res = await fetch('/api/hr/leaves/pendingCount');
-        if (res.ok) {
-          const data = await res.json();
-          setPendingCount(data.count || 0);
-        }
-      } catch (error) {
-        // Silent fail - don't disturb UX
-        console.error('Failed to fetch pending count:', error);
-      }
-    };
-
-    // Fetch immediately
-    fetchPendingCount();
-
-    // Fetch every 60 seconds
-    const interval = setInterval(fetchPendingCount, 60000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   const navItems = [
     {
