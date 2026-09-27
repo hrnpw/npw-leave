@@ -1,4 +1,5 @@
 import { SessionOptions } from 'iron-session';
+import { SESSION_TTL_SECONDS, SESSION_EARLY_WARNING_SECONDS } from './constants';
 
 export interface TeacherSession {
   id: string;
@@ -17,9 +18,11 @@ export interface HrSession {
   createdAt: number;
 }
 
-// Session configuration - 30 minutes sliding window
-const SESSION_TTL = 5 * 60; // 30 minutes in seconds
-const SESSION_WARNING_TIME = 3 * 60; // 5 minutes before expiry
+// Session configuration - 30 minutes sliding window.
+// Values live in lib/constants.ts so the client countdown cannot drift from the
+// real cookie lifetime.
+const SESSION_TTL = SESSION_TTL_SECONDS;
+const SESSION_WARNING_TIME = SESSION_EARLY_WARNING_SECONDS;
 
 export const teacherSessionOptions: SessionOptions = {
   cookieName: 'teacher_session',

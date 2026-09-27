@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock } from 'lucide-react';
 import { toast } from 'sonner';
-import { SESSION_TTL_SECONDS, SESSION_WARNING_SECONDS } from '@/lib/constants';
+import { SESSION_TTL_SECONDS, SESSION_EARLY_WARNING_SECONDS, SESSION_WARNING_SECONDS } from '@/lib/constants';
 
 interface SessionWarningProps {
   sessionType: 'teacher' | 'hr';
@@ -18,10 +18,18 @@ export function SessionWarning({ sessionType, sessionCreatedAt }: SessionWarning
   const [showWarning, setShowWarning] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [earlyWarningShown, setEarlyWarningShown] = useState(false);
+  const [extending, setExtending] = useState(false);
+  // Tracks the session start we are counting down from. Extending updates this
+  // in place instead of reloading, so unsaved form input survives.
+  const [createdAt, setCreatedAt] = useState(sessionCreatedAt);
+
+  useEffect(() => {
+    setCreatedAt(sessionCreatedAt);
+  }, [sessionCreatedAt]);
 
   const checkSession = useCallback(() => {
     const now = Date.now();
-    const elapsed = (now - sessionCreatedAt) / 1000; // seconds
+    const elapsed = (now - createdAt) / 1000; // seconds
     const remaining = SESSION_TTL_SECONDS - elapsed;
 
     if (remaining <= 0) {
@@ -30,10 +38,10 @@ export function SessionWarning({ sessionType, sessionCreatedAt }: SessionWarning
       return;
     }
 
-    // Early warning: 5 minutes before (toast notification)
-    if (remaining <= 300 && remaining > SESSION_WARNING_SECONDS && !earlyWarningShown) {
+    // Early warning: toast a few minutes out, while there is still time to act
+    if (remaining <= SESSION_EARLY_WARNING_SECONDS && remaining > SESSION_WARNING_SECONDS && !earlyWarningShown) {
       setEarlyWarningShown(true);
-      toast.warning('เซสชันจะหมดอายุในอีก 5 นาที', {
+      toast.warning(`เซสชันจะหมดอายุในอีก ${Math.ceil(remaining / 60)} นาที`, {
         description: 'กรุณาบันทึกงานของคุณ',
         duration: 10000,
         action: {
@@ -51,7 +59,7 @@ export function SessionWarning({ sessionType, sessionCreatedAt }: SessionWarning
     if (showWarning) {
       setRemainingSeconds(Math.ceil(remaining));
     }
-  }, [sessionCreatedAt, showWarning, earlyWarningShown]);
+  }, [createdAt, showWarning, earlyWarningShown]);
 
   useEffect(() => {
     const interval = setInterval(checkSession, 1000);
@@ -67,18 +75,33 @@ export function SessionWarning({ sessionType, sessionCreatedAt }: SessionWarning
   };
 
   const handleExtend = async () => {
-    // Make a dummy request to extend session (sliding window)
+    if (extending) return;
+
+    const endpoint = sessionType === 'teacher'
+      ? '/api/auth/teacher/extend'
+      : '/api/auth/hr/extend';
+
     try {
-      const endpoint = sessionType === 'teacher'
-        ? '/api/auth/teacher/extend'
-        : '/api/auth/hr/extend';
+      setExtending(true);
+      const res = await fetch(endpoint, { method: 'POST' });
 
-      await fetch(endpoint, { method: 'POST' });
+      if (!res.ok) {
+        // Session already gone on the server - nothing left to extend.
+        handleExpired();
+        return;
+      }
 
-      // Reload to get fresh session data
-      window.location.reload();
+      // Restart the countdown from now. Deliberately no reload: this component
+      // also runs on the leave form, where a reload would discard user input.
+      setCreatedAt(Date.now());
+      setShowWarning(false);
+      setEarlyWarningShown(false);
+      toast.success('ต่อเวลาใช้งานแล้ว');
     } catch (error) {
       console.error('Failed to extend session:', error);
+      toast.error('ต่อเวลาไม่สำเร็จ กรุณาลองอีกครั้ง');
+    } finally {
+      setExtending(false);
     }
   };
 
@@ -118,19 +141,21 @@ export function SessionWarning({ sessionType, sessionCreatedAt }: SessionWarning
                     เซสชันจะหมดอายุเร็วๆ นี้
                   </h3>
                   <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                    คุณจะถูกออกจากระบบใน <span className="font-bold text-amber-600 dark:text-amber-400">{formatTime(remainingSeconds)}</span> นาที
+                    คุณจะถูกออกจากระบบในอีก <span className="font-bold text-amber-600 dark:text-amber-400">{formatTime(remainingSeconds)}</span>
                   </p>
 
                   <div className="flex gap-3">
                     <button
                       onClick={handleExtend}
-                      className="flex-1 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium rounded-lg transition-colors"
+                      disabled={extending}
+                      className="flex-1 px-4 py-2 bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
                     >
-                      ใช้งานต่อ
+                      {extending ? 'กำลังต่อเวลา...' : 'ใช้งานต่อ'}
                     </button>
                     <button
                       onClick={handleExpired}
-                      className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg transition-colors"
+                      disabled={extending}
+                      className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg transition-colors"
                     >
                       ออกจากระบบ
                     </button>

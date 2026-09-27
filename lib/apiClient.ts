@@ -37,19 +37,19 @@ export async function apiClient<T>(
         case 400:
           throw new ApiError(errorMessage, 400, errorData);
         case 401:
-          // Session expired or invalid - clear cookie and redirect to home
+          // Session expired - send the user to the right login screen and keep
+          // a returnUrl so they land back where they were. Never bounce to '/',
+          // which silently dumps them on the public dashboard.
+          // Note: the session cookies are httpOnly, so clearing them here is not
+          // possible (or needed) - the server drops them on the next request.
           if (typeof window !== 'undefined') {
             const currentPath = window.location.pathname;
+            const returnUrl = encodeURIComponent(currentPath + window.location.search);
 
-            // Determine which session type and redirect accordingly
             if (currentPath.startsWith('/hr')) {
-              // HR session expired - redirect to home page
-              document.cookie = 'hr_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
-              window.location.href = '/';
+              window.location.href = `/hr/login?returnUrl=${returnUrl}`;
             } else if (currentPath.startsWith('/teacher')) {
-              // Teacher session expired - redirect to home page
-              document.cookie = 'teacher_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
-              window.location.href = '/';
+              window.location.href = `/verify?returnUrl=${returnUrl}`;
             }
           }
           throw new ApiError('กรุณาเข้าสู่ระบบใหม่', 401);

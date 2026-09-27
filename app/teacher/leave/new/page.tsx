@@ -33,6 +33,7 @@ export default async function NewLeavePage() {
           teacherCode: session.teacherCode!,
           firstName: session.firstName!,
           lastName: session.lastName!,
+          createdAt: session.createdAt!,
         }}
       />
     </Suspense>

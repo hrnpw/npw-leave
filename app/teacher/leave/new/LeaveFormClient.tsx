@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { formatDateForAPI } from '@/lib/dateFormat';
 import type { LeaveType, HalfDayPeriod } from '@/types/leave';
 import { LEAVE_TYPE_LABELS } from '@/types/leave';
+import { SessionWarning } from '@/components/SessionWarning';
 import LeaveTypeStep from './steps/LeaveTypeStep';
 import DateRangeStep from './steps/DateRangeStep';
 import DetailsStep from './steps/DetailsStep';
@@ -19,6 +20,7 @@ interface LeaveFormClientProps {
     teacherCode: string;
     firstName: string;
     lastName: string;
+    createdAt: number;
   };
 }
 
@@ -81,7 +83,69 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
     }
   };
 
-  // Auto-save disabled per user request
+  // Auto-save disabled per user request.
+  // The draft is still written in one specific case: the session expired while
+  // the form was open, so we have to send the user to /verify. Without this they
+  // would lose everything they typed. Files are dropped (not serialisable).
+  const saveDraft = () => {
+    try {
+      const { files, ...serialisable } = formData;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        ...serialisable,
+        startDate: formData.startDate?.toISOString() ?? null,
+        endDate: formData.endDate?.toISOString() ?? null,
+        currentStep,
+      }));
+    } catch (error) {
+      // Quota exceeded (the signature PNG is the usual culprit) - retry without it
+      console.error('Failed to save draft:', error);
+      try {
+        const { files, signatureDataUrl, ...rest } = formData;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          ...rest,
+          signatureDataUrl: null,
+          startDate: formData.startDate?.toISOString() ?? null,
+          endDate: formData.endDate?.toISOString() ?? null,
+          currentStep,
+        }));
+      } catch {
+        // Give up - the redirect matters more than the draft
+      }
+    }
+  };
+
+  // Restore a draft left behind by a session timeout
+  useEffect(() => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+
+    try {
+      const draft = JSON.parse(raw);
+      setFormData(prev => ({
+        ...prev,
+        ...draft,
+        startDate: draft.startDate ? new Date(draft.startDate) : null,
+        endDate: draft.endDate ? new Date(draft.endDate) : null,
+        files: [],
+      }));
+      if (draft.currentStep) {
+        setCurrentStep(draft.currentStep);
+      }
+      localStorage.removeItem(STORAGE_KEY);
+      toast.info('กู้คืนข้อมูลที่กรอกไว้ก่อนหน้าแล้ว');
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }, []);
+
+  const handleSessionExpired = () => {
+    saveDraft();
+    toast.error('เซสชันหมดอายุ', {
+      description: 'กรุณายืนยันตัวตนอีกครั้ง ข้อมูลที่กรอกไว้ถูกเก็บให้แล้ว',
+      duration: 6000,
+    });
+    router.push(`/verify?returnUrl=${encodeURIComponent('/teacher/leave/new')}`);
+  };
 
   const updateFormData = (updates: Partial<LeaveFormData>) => {
     setFormData(prev => ({ ...prev, ...updates }));
@@ -196,6 +260,11 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
         }),
       });
 
+      if (overlapRes.status === 401) {
+        handleSessionExpired();
+        return;
+      }
+
       const overlapData = await overlapRes.json();
 
       if (overlapData.hasOverlap) {
@@ -229,6 +298,11 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(submitBody),
       });
+
+      if (submitRes.status === 401) {
+        handleSessionExpired();
+        return;
+      }
 
       if (!submitRes.ok) {
         const error = await submitRes.json();
@@ -335,6 +409,9 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      {/* Filling this form can take a while - warn before the session dies */}
+      <SessionWarning sessionType="teacher" sessionCreatedAt={teacher.createdAt} />
+
       {/* Header */}
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-4">
