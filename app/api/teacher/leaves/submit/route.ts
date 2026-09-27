@@ -138,8 +138,6 @@ export async function POST(request: NextRequest) {
     const startDateUTC = new Date(startDateStr + 'T00:00:00.000Z');
     const endDateUTC = new Date(endDateStr + 'T00:00:00.000Z');
 
-    console.log('[OVERLAP CHECK] New leave:', { startDateStr, endDateStr, startDateUTC, endDateUTC, teacherId: session.id });
-
     const overlappingLeaves = await prisma.leave.findMany({
       where: {
         teacherId: session.id,
@@ -169,16 +167,6 @@ export async function POST(request: NextRequest) {
         ],
       },
     });
-
-    if (overlappingLeaves.length > 0) {
-      console.log('[OVERLAP FOUND]', overlappingLeaves.map(l => ({
-        leaveNo: l.leaveNo,
-        startDate: l.startDate,
-        endDate: l.endDate,
-        startDateType: typeof l.startDate,
-        endDateType: typeof l.endDate,
-      })));
-    }
 
     // Check for overlapping leaves
     if (overlappingLeaves.length > 0) {
@@ -266,7 +254,6 @@ export async function POST(request: NextRequest) {
         // Upload to Cloudflare R2 (S3-compatible)
         const signatureUrl = await uploadToR2(filename, buffer, 'image/png');
         teacherSignatureUrl = signatureUrl;
-        console.log('[SIGNATURE] Uploaded successfully:', teacherSignatureUrl);
       } catch (uploadError) {
         console.error('[SIGNATURE] Upload failed:', uploadError);
         // Continue without signature - don't block leave submission (T24)
@@ -370,16 +357,10 @@ export async function POST(request: NextRequest) {
       return newLeave;
     });
 
-    console.log('[DEBUG] After transaction, leave.id:', leave.id);
-    console.log('[DEBUG] TELEGRAM_BOT_TOKEN exists:', !!process.env.TELEGRAM_BOT_TOKEN);
-    console.log('[DEBUG] TELEGRAM_CHAT_ID exists:', !!process.env.TELEGRAM_CHAT_ID);
-
     // Send Telegram notification (await to ensure it completes)
     if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
-      console.log('[DEBUG] Entering Telegram notification block');
       try {
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-        console.log('[DEBUG] Calling Telegram notify API:', `${baseUrl}/api/telegram/notify`);
 
         const response = await fetch(`${baseUrl}/api/telegram/notify`, {
           method: 'POST',
@@ -387,20 +368,14 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({ leaveId: leave.id, type: 'new_leave' }),
         });
 
-        console.log('[DEBUG] Telegram response status:', response.status);
-
         if (!response.ok) {
           const error = await response.json();
           console.error('Telegram notification failed:', error);
-        } else {
-          console.log('Telegram notification sent successfully');
         }
       } catch (err) {
         console.error('Failed to trigger Telegram notification:', err);
         // Notification failure doesn't affect leave creation
       }
-    } else {
-      console.log('[DEBUG] Skipping Telegram - env vars not set');
     }
 
     // Clear localStorage draft

@@ -28,19 +28,16 @@ class FetchCache {
     // Check if there's a pending request for this URL
     const pendingRequest = this.pendingRequests.get(cacheKey);
     if (pendingRequest) {
-      console.log('[FetchCache] Deduplicating request:', url);
       return pendingRequest;
     }
 
     // Check cache
     const cached = this.cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < cacheDuration) {
-      console.log('[FetchCache] Cache hit:', url);
       return cached.data;
     }
 
     // Create new request
-    console.log('[FetchCache] New request:', url);
     const requestPromise = fetch(url, options)
       .then(async (response) => {
         if (!response.ok) {

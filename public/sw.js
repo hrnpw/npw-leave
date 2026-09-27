@@ -1,7 +1,6 @@
 // Service Worker for Leave-NPW PWA
-const CACHE_NAME = 'leave-npw-v1';
+const CACHE_NAME = 'leave-npw-v2';
 const STATIC_ASSETS = [
-  '/',
   '/offline',
   '/manifest.json',
 ];
@@ -46,6 +45,31 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Skip Next.js RSC requests - don't cache them
+  if (request.url.includes('_rsc=')) {
+    return;
+  }
+
+  // Navigation requests: NetworkFirst with fallback to /offline
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          // Don't cache redirected responses
+          if (response.redirected) {
+            return response;
+          }
+          return response;
+        })
+        .catch(() => {
+          return caches.match('/offline').then((offline) => {
+            return offline || new Response('Offline', { status: 503 });
+          });
+        })
+    );
+    return;
+  }
+
   // API routes: NetworkFirst strategy
   if (request.url.includes('/api/')) {
     event.respondWith(
@@ -70,7 +94,7 @@ self.addEventListener('fetch', (event) => {
 
   // Static assets & pages: CacheFirst strategy
   event.respondWith(
-    caches.match(request).then((cached) => {
+    caches.match(request, { ignoreSearch: false }).then((cached) => {
       if (cached) {
         return cached;
       }
@@ -79,6 +103,11 @@ self.addEventListener('fetch', (event) => {
         .then((response) => {
           // Don't cache non-successful responses
           if (!response || response.status !== 200) {
+            return response;
+          }
+
+          // Don't cache redirected responses
+          if (response.redirected) {
             return response;
           }
 
