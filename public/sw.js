@@ -70,9 +70,43 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // API routes: NetworkOnly for realtime data (no cache)
+  // API routes: Selective caching
   if (request.url.includes('/api/')) {
-    // Don't intercept - let it pass through to network directly
+    // Realtime endpoints - NetworkOnly (no cache)
+    const realtimeEndpoints = [
+      '/api/hr/approvals/pending',
+      '/api/hr/leaves/pending',
+      '/api/hr/leaves/pendingCount',
+      '/api/teacher/leaves/status',
+    ];
+
+    const isRealtime = realtimeEndpoints.some(endpoint =>
+      request.url.includes(endpoint)
+    );
+
+    if (isRealtime) {
+      // Don't cache realtime data - let it pass through
+      return;
+    }
+
+    // Other APIs: NetworkFirst with cache fallback for offline
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          // Clone response to cache it
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(request, responseClone);
+          });
+          return response;
+        })
+        .catch(() => {
+          // Fallback to cache if network fails (offline support)
+          return caches.match(request).then((cached) => {
+            return cached || new Response('Network error', { status: 503 });
+          });
+        })
+    );
     return;
   }
 
