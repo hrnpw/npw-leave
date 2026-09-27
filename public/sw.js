@@ -1,9 +1,42 @@
 // Service Worker for Leave-NPW PWA
-const CACHE_NAME = 'leave-npw-v2';
+const CACHE_NAME = 'leave-npw-v3'; // Bumped version to clear old cache
 const STATIC_ASSETS = [
   '/offline',
   '/manifest.json',
 ];
+
+// Cache expiration times (in milliseconds)
+const CACHE_MAX_AGE = {
+  api: 60 * 1000, // 60 seconds for API responses
+  static: 24 * 60 * 60 * 1000, // 24 hours for static assets
+  pages: 5 * 60 * 1000, // 5 minutes for pages
+};
+
+// Helper to check if cached response is expired
+function isCacheExpired(cachedResponse) {
+  if (!cachedResponse) return true;
+
+  const cachedTime = cachedResponse.headers.get('sw-cached-time');
+  if (!cachedTime) return true;
+
+  const cacheType = cachedResponse.headers.get('sw-cache-type') || 'api';
+  const maxAge = CACHE_MAX_AGE[cacheType] || CACHE_MAX_AGE.api;
+
+  return Date.now() - parseInt(cachedTime) > maxAge;
+}
+
+// Helper to add cache metadata to response
+function addCacheMetadata(response, cacheType = 'api') {
+  const headers = new Headers(response.headers);
+  headers.set('sw-cached-time', Date.now().toString());
+  headers.set('sw-cache-type', cacheType);
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: headers,
+  });
+}
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
@@ -70,7 +103,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // API routes: Selective caching
+  // API routes: Selective caching with expiration
   if (request.url.includes('/api/')) {
     // Realtime endpoints - NetworkOnly (no cache)
     const realtimeEndpoints = [
@@ -89,31 +122,55 @@ self.addEventListener('fetch', (event) => {
       return;
     }
 
-    // Other APIs: NetworkFirst with cache fallback for offline
+    // Other APIs: NetworkFirst with expiration check
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          // Clone response to cache it
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseClone);
+      caches.match(request).then((cached) => {
+        // Check if cache is valid and not expired
+        if (cached && !isCacheExpired(cached)) {
+          // Return cached response but update in background
+          fetch(request)
+            .then((response) => {
+              if (response && response.status === 200) {
+                const responseWithMetadata = addCacheMetadata(response.clone(), 'api');
+                caches.open(CACHE_NAME).then((cache) => {
+                  cache.put(request, responseWithMetadata);
+                });
+              }
+            })
+            .catch(() => {
+              // Ignore background update errors
+            });
+          return cached;
+        }
+
+        // Cache expired or doesn't exist - fetch from network
+        return fetch(request)
+          .then((response) => {
+            if (response && response.status === 200) {
+              const responseWithMetadata = addCacheMetadata(response.clone(), 'api');
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(request, responseWithMetadata);
+              });
+            }
+            return response;
+          })
+          .catch(() => {
+            // Network failed - return stale cache if available
+            if (cached) {
+              return cached;
+            }
+            return new Response('Network error', { status: 503 });
           });
-          return response;
-        })
-        .catch(() => {
-          // Fallback to cache if network fails (offline support)
-          return caches.match(request).then((cached) => {
-            return cached || new Response('Network error', { status: 503 });
-          });
-        })
+      })
     );
     return;
   }
 
-  // Static assets & pages: CacheFirst strategy
+  // Static assets & pages: CacheFirst with expiration
   event.respondWith(
     caches.match(request, { ignoreSearch: false }).then((cached) => {
-      if (cached) {
+      // Check if cache exists and is not expired
+      if (cached && !isCacheExpired(cached)) {
         return cached;
       }
 
@@ -129,16 +186,22 @@ self.addEventListener('fetch', (event) => {
             return response;
           }
 
-          // Clone and cache
-          const responseClone = response.clone();
+          // Determine cache type based on URL
+          const cacheType = request.mode === 'navigate' ? 'pages' : 'static';
+          const responseWithMetadata = addCacheMetadata(response.clone(), cacheType);
+
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseClone);
+            cache.put(request, responseWithMetadata);
           });
 
           return response;
         })
         .catch(() => {
           // If both cache and network fail, show offline page
+          // Use stale cache as last resort
+          if (cached) {
+            return cached;
+          }
           return caches.match('/offline').then((offline) => {
             return offline || new Response('Offline', { status: 503 });
           });

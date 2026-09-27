@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-// Enable ISR with 60 seconds revalidation
-export const revalidate = 60;
+// Dynamic route with cache control headers
+export const dynamic = 'force-dynamic';
+export const revalidate = 0; // Disable ISR, use Cache-Control headers instead
 
 interface LeaveTypeCount {
   type: string;

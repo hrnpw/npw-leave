@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { startOfMonth, endOfMonth, eachDayOfInterval, format } from 'date-fns';
 
-// Enable ISR with 60 seconds revalidation
-export const revalidate = 60;
-export const dynamic = 'force-static';
-export const dynamicParams = true;
+// Dynamic route with cache control headers
+export const dynamic = 'force-dynamic';
+export const revalidate = 0; // Disable ISR, use Cache-Control headers instead
 
 /**
  * GET /api/public/dashboard?year=2026&month=9
