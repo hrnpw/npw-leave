@@ -20,12 +20,22 @@ interface HrLayoutWrapperProps {
 export default function HrLayoutWrapper({
   children,
   hrUser,
-  pendingCount: initialCount = 0,
+  pendingCount: initialCount,
 }: HrLayoutWrapperProps) {
-  const [pendingCount, setPendingCount] = useState(initialCount);
+  const [pendingCount, setPendingCount] = useState(initialCount ?? 0);
+  const shouldFetch = initialCount === undefined;
 
-  // Fetch pending count on mount and every 60 seconds
+  // Sync with prop changes
   useEffect(() => {
+    if (initialCount !== undefined) {
+      setPendingCount(initialCount);
+    }
+  }, [initialCount]);
+
+  // Fetch pending count only if not provided by parent
+  useEffect(() => {
+    if (!shouldFetch) return;
+
     const fetchPendingCount = async () => {
       try {
         const res = await fetch('/api/hr/leaves/pendingCount');
@@ -34,19 +44,15 @@ export default function HrLayoutWrapper({
           setPendingCount(data.count || 0);
         }
       } catch (error) {
-        // Silent fail - don't disturb UX
         console.error('Failed to fetch pending count:', error);
       }
     };
 
-    // Fetch immediately
     fetchPendingCount();
-
-    // Fetch every 60 seconds
     const interval = setInterval(fetchPendingCount, 60000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [shouldFetch]);
 
   return (
     <>
