@@ -81,6 +81,19 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
+    // Early return if no leaves to process
+    if (leaves.length === 0) {
+      return NextResponse.json({
+        leaves: [],
+        pagination: {
+          page,
+          limit,
+          total: 0,
+          totalPages: 0,
+        },
+      });
+    }
+
     // Get settings for quota checking
     const settings = await prisma.settings.findUnique({
       where: { id: 'singleton' },

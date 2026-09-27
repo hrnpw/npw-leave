@@ -88,24 +88,7 @@ export async function POST(
       },
     });
 
-    // Step 2: Fire-and-forget PDF generation (background)
-    // Use setTimeout to truly detach from request lifecycle
-    setTimeout(() => {
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-      const pdfGenUrl = `${baseUrl}/api/hr/leaves/${updatedLeave.id}/generate-pdf`;
-
-      console.log('[APPROVE] Triggering background PDF generation:', pdfGenUrl);
-
-      fetch(pdfGenUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-internal-api-key': process.env.INTERNAL_API_KEY || '',
-        },
-      }).catch((err) => console.error('[APPROVE] PDF generation failed (non-blocking):', err));
-    }, 0);
-
-    // Step 3: Audit log (fire-and-forget - don't block response)
+    // Audit log (fire-and-forget - don't block response)
     createAuditLog({
       userId: session.id,
       userType: 'hr',
