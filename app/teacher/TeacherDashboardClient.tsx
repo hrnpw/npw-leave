@@ -94,12 +94,16 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
   const [statModalLeaves, setStatModalLeaves] = useState<RecentLeave[]>([]);
   const [loadingStatModal, setLoadingStatModal] = useState(false);
   const initialLoadRef = useRef(false);
+  const [currentDate, setCurrentDate] = useState<Date | null>(null);
 
   // Check if first time user (no leaves ever)
   const isFirstTimeUser = !loading && recentLeaves.length === 0;
   const hasNoLeavesThisPeriod = stats && Object.values(stats).every(s => s.count === 0);
 
   useEffect(() => {
+    // Set current date on client side only
+    setCurrentDate(new Date());
+
     // Prevent double fetch on mount
     if (initialLoadRef.current) return;
     initialLoadRef.current = true;
@@ -310,7 +314,7 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
               />
               <div className="min-w-0 flex-1">
                 <p className="text-label text-secondary mb-1 flex items-center gap-2">
-                  {getThaiGreeting()}
+                  {currentDate ? getThaiGreeting(currentDate) : ' '}
                   {!loading && pendingCount > 0 && (
                     <span className="relative inline-flex items-center gap-1">
                       <motion.span
@@ -343,7 +347,7 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
               </button>
             </div>
             <p className="text-caption text-tertiary">
-              {formatFullThaiDate(new Date())}
+              {currentDate ? formatFullThaiDate(currentDate) : ' '}
             </p>
           </div>
         </header>
@@ -373,7 +377,7 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
                     const displayType = leave.type === 'other' && leave.customTypeName
                       ? leave.customTypeName
                       : LEAVE_TYPE_LABELS[leave.type];
-                    const daysUntil = differenceInDays(new Date(leave.startDate), new Date());
+                    const daysUntil = currentDate ? differenceInDays(new Date(leave.startDate), currentDate) : 0;
                     const halfDayLabel = leave.isHalfDay
                       ? (leave.halfDayPeriod === 'morning' ? 'ครึ่งเช้า' : 'ครึ่งบ่าย')
                       : null;

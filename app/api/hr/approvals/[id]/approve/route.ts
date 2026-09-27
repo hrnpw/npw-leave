@@ -8,25 +8,46 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getHrSession();
+    // Step 1: Validate session and get leaveId in parallel
+    const [session, { id: leaveId }] = await Promise.all([
+      getHrSession(),
+      params,
+    ]);
+
     if (!session.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: leaveId } = await params;
-
-    // Get leave
-    const leave = await prisma.leave.findUnique({
-      where: { id: leaveId },
-      include: {
-        teacher: {
-          select: {
-            firstName: true,
-            lastName: true,
+    // Step 2: Fetch leave and settings in parallel
+    const [leave, settings] = await Promise.all([
+      prisma.leave.findUnique({
+        where: { id: leaveId },
+        select: {
+          id: true,
+          leaveNo: true,
+          status: true,
+          teacherId: true,
+          type: true,
+          startDate: true,
+          endDate: true,
+          daysWorking: true,
+          daysCalendar: true,
+          teacher: {
+            select: {
+              firstName: true,
+              lastName: true,
+            },
           },
         },
-      },
-    });
+      }),
+      prisma.settings.findUnique({
+        where: { id: 'singleton' },
+        select: {
+          currentHrHeadId: true,
+          currentDirectorId: true,
+        },
+      }),
+    ]);
 
     if (!leave) {
       return NextResponse.json({ error: 'ไม่พบใบลา' }, { status: 404 });
@@ -39,40 +60,49 @@ export async function POST(
       );
     }
 
-    // Get current signatories (parallel queries for speed)
-    const settings = await prisma.settings.findUnique({
-      where: { id: 'singleton' },
-    });
-
-    let approverSnapshot = null;
-    let directorSnapshot = null;
-
-    // Fetch both signatories in parallel
+    // Step 3: Fetch both signatories in parallel (only if they exist)
     const [hrHead, director] = await Promise.all([
       settings?.currentHrHeadId
-        ? prisma.signatory.findUnique({ where: { id: settings.currentHrHeadId } })
-        : null,
+        ? prisma.signatory.findUnique({
+            where: { id: settings.currentHrHeadId },
+            select: {
+              title: true,
+              firstName: true,
+              lastName: true,
+              position: true,
+            },
+          })
+        : Promise.resolve(null),
       settings?.currentDirectorId
-        ? prisma.signatory.findUnique({ where: { id: settings.currentDirectorId } })
-        : null,
+        ? prisma.signatory.findUnique({
+            where: { id: settings.currentDirectorId },
+            select: {
+              title: true,
+              firstName: true,
+              lastName: true,
+              position: true,
+            },
+          })
+        : Promise.resolve(null),
     ]);
 
-    if (hrHead) {
-      approverSnapshot = {
-        name: `${hrHead.title}${hrHead.firstName} ${hrHead.lastName}`,
-        position: hrHead.position,
-      };
-    }
+    // Prepare snapshot data
+    const approverSnapshot = hrHead
+      ? {
+          name: `${hrHead.title}${hrHead.firstName} ${hrHead.lastName}`,
+          position: hrHead.position,
+        }
+      : null;
 
-    if (director) {
-      directorSnapshot = {
-        name: `${director.title}${director.firstName} ${director.lastName}`,
-        position: director.position,
-      };
-    }
+    const directorSnapshot = director
+      ? {
+          name: `${director.title}${director.firstName} ${director.lastName}`,
+          position: director.position,
+        }
+      : null;
 
-    // Update leave (step 1: approve)
-    const updatedLeave = await prisma.leave.update({
+    // Step 4: Update leave status (no need to include data we already have)
+    await prisma.leave.update({
       where: { id: leaveId },
       data: {
         status: 'approved',
@@ -82,28 +112,24 @@ export async function POST(
         directorNameSnapshot: directorSnapshot?.name,
         directorPositionSnapshot: directorSnapshot?.position,
       },
-      include: {
-        teacher: true,
-        leaveDays: true,
-      },
     });
 
-    // Audit log (fire-and-forget - don't block response)
+    // Step 5: Audit log (fire-and-forget - don't block response)
     createAuditLog({
       userId: session.id,
       userType: 'hr',
       action: 'APPROVE_LEAVE',
       resource: 'leaves',
-      resourceId: updatedLeave.id,
+      resourceId: leave.id,
       details: {
-        leaveNo: updatedLeave.leaveNo,
-        teacherId: updatedLeave.teacherId,
-        teacherName: `${updatedLeave.teacher.firstName} ${updatedLeave.teacher.lastName}`,
-        type: updatedLeave.type,
-        startDate: updatedLeave.startDate.toISOString(),
-        endDate: updatedLeave.endDate.toISOString(),
-        daysWorking: updatedLeave.daysWorking,
-        daysCalendar: updatedLeave.daysCalendar,
+        leaveNo: leave.leaveNo,
+        teacherId: leave.teacherId,
+        teacherName: `${leave.teacher.firstName} ${leave.teacher.lastName}`,
+        type: leave.type,
+        startDate: leave.startDate.toISOString(),
+        endDate: leave.endDate.toISOString(),
+        daysWorking: leave.daysWorking,
+        daysCalendar: leave.daysCalendar,
         pdfGenerationTriggered: true,
       },
       ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined,

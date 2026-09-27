@@ -10,7 +10,7 @@ export const DEFAULT_HR_BACKDATE_LIMIT_DAYS = 30;
 // Session
 // Single source of truth - lib/session.ts (server) and components/SessionWarning.tsx
 // (client) both read these, so the cookie lifetime and the countdown always agree.
-export const SESSION_TTL_SECONDS = 10 * 60; // 30 minutes
+export const SESSION_TTL_SECONDS = 30 * 60; // 30 minutes
 export const SESSION_EARLY_WARNING_SECONDS = 5 * 60; // toast 5 minutes before expiry
 export const SESSION_WARNING_SECONDS = 60; // modal 1 minute before expiry
 

@@ -50,8 +50,8 @@ export function formatFullThaiDate(date: Date): string {
 /**
  * Get greeting based on time of day
  */
-export function getThaiGreeting(): string {
-  const hour = new Date().getHours();
+export function getThaiGreeting(date?: Date): string {
+  const hour = (date || new Date()).getHours();
 
   if (hour < 12) return 'สวัสดีตอนเช้า';
   if (hour < 17) return 'สวัสดีตอนบ่าย';
