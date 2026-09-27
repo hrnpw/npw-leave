@@ -149,12 +149,12 @@ export default function VerifyClient() {
 
       console.log('[Verify] Login successful, redirecting to:', returnUrl);
 
-      // Wait a bit for cookie to be fully set before navigation
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Wait longer for cookie to be fully set before navigation
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Use router.push with replace to prevent back button issues
-      // This will trigger middleware to check the new cookie
-      router.replace(returnUrl);
+      // Use window.location.href for hard navigation to ensure fresh page load
+      // This prevents cache issues and ensures session is properly loaded
+      window.location.href = returnUrl;
     } catch (err) {
       setError('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
       setLoading(false);
