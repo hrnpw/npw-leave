@@ -93,8 +93,8 @@ export default function LeaveTypeStep({ formData, updateFormData, onNext }: Leav
                 p-6 rounded-2xl border-2 transition-all text-left
                 ${
                   isSelected
-                    ? `${colors.light} ${colors.dark} border-orange-500 dark:border-orange-400 shadow-md scale-[1.02]`
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-sm active:scale-[0.98]'
+                    ? `${colors.light} ${colors.dark} border-orange-500 dark:border-orange-400 shadow-xl shadow-orange-200/60 dark:shadow-orange-950/40 scale-[1.02]`
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-lg hover:shadow-slate-200/60 dark:hover:shadow-slate-950/40 shadow-md shadow-slate-200/40 dark:shadow-slate-950/30 active:scale-[0.98]'
                 }
               `}
             >
@@ -146,7 +146,7 @@ export default function LeaveTypeStep({ formData, updateFormData, onNext }: Leav
             value={formData.customTypeName || ''}
             onChange={(e) => handleCustomTypeNameChange(e.target.value)}
             placeholder="เช่น ลาไปศาล, ลาอบรม"
-            className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition-all"
+            className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition-all shadow-sm focus:shadow-lg focus:shadow-sky-200/30 dark:focus:shadow-sky-950/30"
             maxLength={50}
           />
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">

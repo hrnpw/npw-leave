@@ -59,7 +59,7 @@ export default function SignatureStep({ formData, updateFormData, onSubmit, subm
       className="space-y-4"
     >
       {/* Summary */}
-      <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 space-y-3">
+      <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 space-y-3 shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60">
         <h3 className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-500" />
           สรุปการลา
@@ -89,7 +89,7 @@ export default function SignatureStep({ formData, updateFormData, onSubmit, subm
       </div>
 
       {/* Signature instruction */}
-      <div className="bg-sky-50 dark:bg-sky-900/20 border-2 border-sky-200 dark:border-sky-800 rounded-xl p-4">
+      <div className="bg-sky-50 dark:bg-sky-900/20 border-2 border-sky-200 dark:border-sky-800 rounded-xl p-4 shadow-lg shadow-sky-200/60 dark:shadow-sky-950/60">
         <div className="flex items-start gap-3">
           <FileText className="w-5 h-5 text-sky-600 dark:text-sky-400 flex-shrink-0 mt-0.5" />
           <div className="flex-1 space-y-1">
@@ -119,7 +119,7 @@ export default function SignatureStep({ formData, updateFormData, onSubmit, subm
           </button>
         </div>
 
-        <div className="relative bg-white rounded-xl border-2 border-slate-300 dark:border-slate-600 overflow-hidden">
+        <div className="relative bg-white rounded-xl border-2 border-slate-300 dark:border-slate-600 overflow-hidden shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60">
           <SignatureCanvas
             ref={sigPadRef}
             onEnd={handleEnd}
@@ -144,7 +144,7 @@ export default function SignatureStep({ formData, updateFormData, onSubmit, subm
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 border border-slate-200 dark:border-slate-700"
+            className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 border border-slate-200 dark:border-slate-700 shadow-md shadow-slate-200/50 dark:shadow-slate-950/50"
           >
             <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
               ตัวอย่างลายเซ็น:
@@ -159,7 +159,7 @@ export default function SignatureStep({ formData, updateFormData, onSubmit, subm
       </div>
 
       {/* Confirmation text */}
-      <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border-2 border-slate-200 dark:border-slate-700">
+      <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border-2 border-slate-200 dark:border-slate-700 shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60">
         <p className="text-sm text-slate-700 dark:text-slate-300">
           ข้าพเจ้าขอรับรองว่าข้อมูลทั้งหมดที่กรอกในใบลานี้ถูกต้องและเป็นความจริง
         </p>
@@ -170,7 +170,7 @@ export default function SignatureStep({ formData, updateFormData, onSubmit, subm
         <button
           onClick={onSubmit}
           disabled={!canSubmit || submitting}
-          className="w-full py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-xl font-semibold transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-xl font-semibold transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xl shadow-orange-500/50 hover:shadow-2xl hover:shadow-orange-500/60 disabled:shadow-none"
         >
           {submitting ? (
             <>

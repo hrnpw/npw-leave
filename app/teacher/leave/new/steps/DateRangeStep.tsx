@@ -271,7 +271,7 @@ export default function DateRangeStep({ formData, updateFormData, onNext, isProx
       </div>
 
       {/* Calendar */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60 border border-slate-200 dark:border-slate-800 p-4">
         {/* Month navigation */}
         <div className="flex items-center justify-between mb-4">
           <button
@@ -327,9 +327,9 @@ export default function DateRangeStep({ formData, updateFormData, onNext, isProx
                   aspect-square rounded-lg text-sm md:text-base font-medium transition-all relative
                   ${disabled ? 'text-slate-300 dark:text-slate-700 cursor-not-allowed' : ''}
                   ${isHoliday && !selected ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 line-through' : ''}
-                  ${selected ? 'bg-orange-500 text-white shadow-sm scale-105' : ''}
-                  ${inRange && !selected ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' : ''}
-                  ${!selected && !inRange && !disabled && !isHoliday ? 'hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95' : ''}
+                  ${selected ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/40 scale-105' : ''}
+                  ${inRange && !selected ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 shadow-md shadow-orange-200/50 dark:shadow-orange-950/30' : ''}
+                  ${!selected && !inRange && !disabled && !isHoliday ? 'hover:bg-slate-100 dark:hover:bg-slate-800 hover:shadow-sm active:scale-95' : ''}
                   ${!selected && !inRange && !disabled && !isHoliday && isWeekend ? 'text-red-600 dark:text-red-400' : ''}
                   ${!selected && !inRange && !disabled && !isHoliday && !isWeekend ? 'text-slate-900 dark:text-slate-100' : ''}
                   ${today && !selected ? 'ring-2 ring-orange-500 ring-inset' : ''}
@@ -352,7 +352,7 @@ export default function DateRangeStep({ formData, updateFormData, onNext, isProx
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
-          className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-4"
+          className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-4 shadow-lg shadow-orange-200/60 dark:shadow-orange-950/40"
         >
           <div className="flex items-start gap-3">
             <Calendar className="w-5 h-5 text-orange-600 dark:text-orange-400 mt-0.5" />
@@ -408,8 +408,8 @@ export default function DateRangeStep({ formData, updateFormData, onNext, isProx
                   py-2 px-4 rounded-lg border-2 font-medium transition-all active:scale-95
                   ${
                     formData.halfDayPeriod === 'morning'
-                      ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 shadow-sm'
-                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm'
+                      ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 shadow-md shadow-orange-200/50 dark:shadow-orange-950/30'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm shadow-sm'
                   }
                 `}
               >
@@ -421,8 +421,8 @@ export default function DateRangeStep({ formData, updateFormData, onNext, isProx
                   py-2 px-4 rounded-lg border-2 font-medium transition-all active:scale-95
                   ${
                     formData.halfDayPeriod === 'afternoon'
-                      ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 shadow-sm'
-                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm'
+                      ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 shadow-md shadow-orange-200/50 dark:shadow-orange-950/30'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm shadow-sm'
                   }
                 `}
               >
@@ -438,7 +438,7 @@ export default function DateRangeStep({ formData, updateFormData, onNext, isProx
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl"
+          className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl shadow-lg shadow-amber-200/60 dark:shadow-amber-950/40"
         >
           <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
           <p className="text-sm text-amber-800 dark:text-amber-300">
@@ -452,7 +452,7 @@ export default function DateRangeStep({ formData, updateFormData, onNext, isProx
         <div className="hidden md:block">
           <button
             onClick={onNext}
-            className="w-full py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+            className="w-full py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-xl shadow-sky-500/50 hover:shadow-2xl hover:shadow-sky-500/60"
           >
             <span>ถัดไป</span>
             <Calendar className="w-5 h-5" />

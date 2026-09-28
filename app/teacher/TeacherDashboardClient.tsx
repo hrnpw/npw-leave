@@ -290,7 +290,7 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
               className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-4"
               style={{ transform: `translateY(${Math.min(pullDistance - 40, 40)}px)` }}
             >
-              <div className="bg-white dark:bg-slate-800 rounded-full p-2 shadow-lg">
+              <div className="bg-white dark:bg-slate-800 rounded-full p-2 shadow-xl shadow-sky-300/60 dark:shadow-sky-950/80">
                 <RefreshCw
                   className={`w-5 h-5 transition-colors ${
                     pullDistance > 100
@@ -304,7 +304,7 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
           )}
         </AnimatePresence>
         {/* Header */}
-        <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+        <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="max-w-4xl mx-auto px-4 py-3">
             <div className="flex items-start gap-3 mb-2">
               <img
@@ -358,7 +358,7 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/30 dark:to-blue-950/30 rounded-xl border border-sky-200 dark:border-sky-800 p-3"
+              className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/30 dark:to-blue-950/30 rounded-xl border border-sky-200 dark:border-sky-800 p-3 shadow-lg shadow-sky-200/60 dark:shadow-sky-950/80"
             >
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-heading-sm flex items-center gap-2">
@@ -393,7 +393,7 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
                       >
                         <div
                           onClick={() => router.push(`/teacher/leaves/${leave.id}`)}
-                          className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-sky-200 dark:border-sky-800 hover:border-sky-300 dark:hover:border-sky-700 hover:shadow-md transition-all cursor-pointer"
+                          className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-sky-200 dark:border-sky-800 hover:border-sky-300 dark:hover:border-sky-700 hover:shadow-xl hover:shadow-sky-200/60 dark:hover:shadow-sky-950/60 shadow-md shadow-sky-100/60 dark:shadow-sky-950/60 transition-all cursor-pointer"
                         >
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <div className="flex items-center gap-1.5 flex-wrap">
@@ -495,8 +495,8 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
                       onClick={() => handleStatCardClick(type)}
                       className={`p-3 rounded-xl border transition-all ${
                         hasData
-                          ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-sky-300 dark:hover:border-sky-700 cursor-pointer'
-                          : 'bg-slate-50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-800/50 cursor-default'
+                          ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60 hover:shadow-xl hover:shadow-sky-200/50 dark:hover:shadow-sky-950/50 hover:border-sky-300 dark:hover:border-sky-700 cursor-pointer'
+                          : 'bg-slate-50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-800/50 cursor-default shadow-sm'
                       }`}
                     >
                       <div className="flex items-center gap-2 mb-2">
@@ -525,7 +525,7 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
           {/* Leave Timeline - Lazy loaded */}
           {timeline && (
             <Suspense fallback={
-              <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-4 h-48 animate-pulse" />
+              <div className="bg-white dark:bg-slate-900 rounded-xl shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60 border border-slate-200 dark:border-slate-800 p-4 h-48 animate-pulse" />
             }>
               {Object.keys(timeline.monthlyData).length > 0 ? (
                 <TimelineSection
@@ -542,7 +542,7 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
                   }}
                 />
               ) : (
-                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-4">
+                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60 border border-slate-200 dark:border-slate-800 p-4">
                   <div className="text-center py-6 text-secondary text-body-sm">
                     ไม่มีข้อมูล
                   </div>
@@ -553,7 +553,7 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
         </main>
 
         {/* Bottom navigation - Enhanced with CTA */}
-        <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pb-safe z-50">
+        <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pb-safe z-50 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_12px_rgba(0,0,0,0.3)]">
           <div className="max-w-4xl mx-auto px-4 py-2.5">
             <div className="grid grid-cols-3 gap-2">
               <button
@@ -566,7 +566,7 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
 
               <button
                 onClick={() => router.push('/teacher/leave/new')}
-                className="relative flex flex-col items-center gap-0.5 py-2 px-4 -mt-4 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-2xl shadow-lg hover:shadow-xl active:scale-95 transition-all group"
+                className="relative flex flex-col items-center gap-0.5 py-2 px-4 -mt-4 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-2xl shadow-xl shadow-orange-500/50 hover:shadow-2xl hover:shadow-orange-500/60 active:scale-95 transition-all group"
               >
                 <motion.div
                   animate={{

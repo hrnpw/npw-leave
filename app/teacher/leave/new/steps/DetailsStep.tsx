@@ -175,7 +175,7 @@ export default function DetailsStep({ formData, updateFormData, onNext, onSubmit
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl"
+          className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl shadow-lg shadow-amber-200/60 dark:shadow-amber-950/40"
         >
           <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
           <div className="flex-1">
@@ -190,7 +190,7 @@ export default function DetailsStep({ formData, updateFormData, onNext, onSubmit
       )}
 
       {/* Summary card */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60 border border-slate-200 dark:border-slate-800 p-4">
         <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-3">
           สรุปการลา
         </h3>
@@ -233,7 +233,7 @@ export default function DetailsStep({ formData, updateFormData, onNext, onSubmit
           minLength={10}
           maxLength={500}
           required
-          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all resize-none"
+          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all resize-none shadow-sm focus:shadow-lg focus:shadow-orange-200/30 dark:focus:shadow-orange-950/30"
         />
         <div className="flex justify-between mt-1">
           <p className={`text-xs ${formData.reason.length < 10 ? 'text-red-500' : 'text-slate-500 dark:text-slate-400'}`}>
@@ -258,7 +258,7 @@ export default function DetailsStep({ formData, updateFormData, onNext, onSubmit
           minLength={10}
           maxLength={300}
           required
-          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all resize-none"
+          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all resize-none shadow-sm focus:shadow-lg focus:shadow-orange-200/30 dark:focus:shadow-orange-950/30"
         />
       </div>
 
@@ -273,7 +273,7 @@ export default function DetailsStep({ formData, updateFormData, onNext, onSubmit
           onChange={(e) => updateFormData({ contactPhone: e.target.value })}
           placeholder="เช่น 0812345678 หรือ 081-234-5678"
           required
-          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition-all"
+          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition-all shadow-sm focus:shadow-lg focus:shadow-sky-200/30 dark:focus:shadow-sky-950/30"
         />
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
           กรอกเบอร์โทรศัพท์ที่สามารถติดต่อได้ระหว่างวันลา
@@ -297,7 +297,7 @@ export default function DetailsStep({ formData, updateFormData, onNext, onSubmit
                 key={index}
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl"
+                className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl shadow-md shadow-slate-200/50 dark:shadow-slate-950/50"
               >
                 <div className="w-10 h-10 bg-sky-100 dark:bg-sky-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
                   {file.type.startsWith('image/') ? (
@@ -367,7 +367,7 @@ export default function DetailsStep({ formData, updateFormData, onNext, onSubmit
         <button
           onClick={onSubmit}
           disabled={!canSubmit || submitting}
-          className="w-full py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-xl font-semibold transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 disabled:shadow-none"
         >
           {submitting ? (
             <>

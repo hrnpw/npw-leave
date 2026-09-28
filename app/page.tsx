@@ -290,7 +290,7 @@ export default function HomePage() {
             className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-4"
             style={{ transform: `translateY(${Math.min(pullDistance - 40, 40)}px)` }}
           >
-            <div className="bg-white dark:bg-slate-800 rounded-full p-2 shadow-lg">
+            <div className="bg-white dark:bg-slate-800 rounded-full p-2 shadow-lg shadow-slate-300/50 dark:shadow-slate-950/80">
               <RefreshCw
                 className={`w-5 h-5 transition-colors ${
                   pullDistance > 140
@@ -352,7 +352,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl p-5 text-white text-center"
+            className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl p-5 text-white text-center shadow-lg shadow-amber-500/20"
           >
             <Calendar className="w-7 h-7 mx-auto mb-1.5" />
             <h2 className="text-heading-md mb-0.5">วันนี้เป็นวันหยุด</h2>
@@ -367,7 +367,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-sm border border-slate-200 dark:border-slate-800 xs:col-span-1 hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700 transition-all cursor-default"
+            className="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-md shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-200 dark:border-slate-800 xs:col-span-1 hover:shadow-lg hover:shadow-emerald-200/30 dark:hover:shadow-emerald-950/30 hover:border-emerald-300 dark:hover:border-emerald-700 hover:-translate-y-0.5 transition-all cursor-default"
           >
             <div className="flex items-center gap-2 mb-3">
               <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
@@ -389,7 +389,7 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-sm border border-slate-200 dark:border-slate-800 hover:shadow-md hover:border-sky-300 dark:hover:border-sky-700 transition-all cursor-default"
+              className="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-md shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-200 dark:border-slate-800 hover:shadow-lg hover:shadow-sky-200/30 dark:hover:shadow-sky-950/30 hover:border-sky-300 dark:hover:border-sky-700 hover:-translate-y-0.5 transition-all cursor-default"
             >
               <div className="flex items-center gap-2 mb-3">
                 <div className="p-1.5 bg-sky-100 dark:bg-sky-900/30 rounded-lg">
@@ -409,7 +409,7 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-sm border border-slate-200 dark:border-slate-800 hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700 transition-all cursor-default"
+              className="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-md shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-200 dark:border-slate-800 hover:shadow-lg hover:shadow-amber-200/30 dark:hover:shadow-amber-950/30 hover:border-amber-300 dark:hover:border-amber-700 hover:-translate-y-0.5 transition-all cursor-default"
             >
               <div className="flex items-center gap-2 mb-3">
                 <div className="p-1.5 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
@@ -438,7 +438,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-sm border border-slate-200 dark:border-slate-800"
+            className="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-md shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-200 dark:border-slate-800"
           >
             <h2 className="text-heading-sm mb-3">
               รายชื่อครูที่ลาวันนี้
@@ -493,7 +493,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/30 dark:to-blue-950/30 rounded-xl p-8 text-center border border-sky-100 dark:border-sky-900/50"
+            className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/30 dark:to-blue-950/30 rounded-xl p-8 text-center border border-sky-100 dark:border-sky-900/50 shadow-lg shadow-sky-100/50 dark:shadow-sky-950/50"
           >
             <div className="w-16 h-16 mx-auto mb-4 bg-sky-100 dark:bg-sky-900/50 rounded-full flex items-center justify-center">
               <Calendar className="w-8 h-8 text-sky-600 dark:text-sky-400" />
@@ -512,7 +512,7 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-          className="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-sm border border-slate-200 dark:border-slate-800"
+          className="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-md shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-200 dark:border-slate-800"
         >
           <h2 className="text-heading-sm mb-3">
             ปฏิทินการลารายเดือน
@@ -540,7 +540,7 @@ export default function HomePage() {
                 exit={{ opacity: 0, y: 50, scale: 0.95 }}
                 transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-xl border border-slate-200 dark:border-slate-800 w-full max-w-md max-h-[80vh] overflow-y-auto"
+                className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-2xl shadow-slate-300/50 dark:shadow-slate-950/90 border border-slate-200 dark:border-slate-800 w-full max-w-md max-h-[80vh] overflow-y-auto"
               >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-heading-md">
@@ -608,19 +608,19 @@ export default function HomePage() {
       </main>
 
       {/* CTA buttons */}
-      <div className="fixed bottom-0 left-0 right-0 p-3 pb-safe bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-t border-slate-200 dark:border-slate-800">
+      <div className="fixed bottom-0 left-0 right-0 p-3 pb-safe bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-t border-slate-200 dark:border-slate-800 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_12px_rgba(0,0,0,0.3)]">
         <div className="max-w-4xl mx-auto flex gap-2">
           <Link
             href="/verify"
             prefetch={false}
-            className="flex-1 py-3.5 bg-orange-500 hover:bg-orange-600 text-white text-center font-semibold rounded-lg shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
+            className="flex-1 py-3.5 bg-orange-500 hover:bg-orange-600 text-white text-center font-semibold rounded-lg shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-all active:scale-[0.98]"
           >
             ยื่นใบลา
           </Link>
           <Link
             href="/hr/login"
             prefetch={false}
-            className="px-5 py-3.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-center font-medium rounded-lg shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
+            className="px-5 py-3.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-center font-medium rounded-lg shadow-md shadow-slate-200/50 dark:shadow-slate-950/50 hover:shadow-lg transition-all active:scale-[0.98]"
           >
             เจ้าหน้าที่
           </Link>

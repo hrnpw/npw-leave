@@ -413,7 +413,7 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
       <SessionWarning sessionType="teacher" sessionCreatedAt={teacher.createdAt} />
 
       {/* Header */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
+      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10 shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60">
         <div className="max-w-2xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-4">
             <button
@@ -495,12 +495,12 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
       </main>
 
       {/* Bottom button (fixed on mobile) */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 p-4 safe-area-bottom md:hidden">
+      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 p-4 safe-area-bottom md:hidden shadow-[0_-4px_16px_rgba(0,0,0,0.12)] dark:shadow-[0_-4px_16px_rgba(0,0,0,0.4)]">
         {currentStep === 4 && requireSignature ? (
           <button
             onClick={handleSubmit}
             disabled={!formData.signatureDataUrl || submitting}
-            className="w-full py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-lg font-semibold shadow-sm hover:shadow-md transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center gap-2"
+            className="w-full py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-lg font-semibold shadow-xl shadow-orange-500/40 hover:shadow-2xl hover:shadow-orange-500/50 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100 disabled:shadow-none flex items-center justify-center gap-2"
           >
             {submitting ? (
               <>
@@ -518,7 +518,7 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
           <button
             onClick={currentStep === 3 && !requireSignature ? handleSubmit : handleNext}
             disabled={!canProceed() || submitting}
-            className="w-full py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-lg font-semibold shadow-sm hover:shadow-md transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center gap-2"
+            className="w-full py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-lg font-semibold shadow-xl shadow-orange-500/40 hover:shadow-2xl hover:shadow-orange-500/50 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100 disabled:shadow-none flex items-center justify-center gap-2"
           >
             {submitting ? (
               <>
