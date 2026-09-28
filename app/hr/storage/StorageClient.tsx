@@ -186,13 +186,13 @@ export default function StorageClient() {
     }
   };
 
-  const handleDeleteAttachment = async (attachmentId: string, blobUrl: string) => {
+  const handleDeleteAttachment = async (attachmentId: string) => {
     if (!confirm('ต้องการลบไฟล์นี้หรือไม่?')) return;
 
     try {
       setDeleting(attachmentId);
 
-      const res = await fetch(`/api/blob/delete/${encodeURIComponent(blobUrl)}`, {
+      const res = await fetch(`/api/r2/delete/${attachmentId}`, {
         method: 'DELETE',
       });
 
@@ -738,7 +738,7 @@ export default function StorageClient() {
                                   <Eye className="w-4 h-4" />
                                 </button>
                                 <button
-                                  onClick={() => handleDeleteAttachment(att.id, att.blobUrl)}
+                                  onClick={() => handleDeleteAttachment(att.id)}
                                   disabled={deleting === att.id}
                                   className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
                                   title="ลบ"
