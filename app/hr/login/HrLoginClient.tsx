@@ -271,7 +271,18 @@ export default function HrLoginClient() {
               disabled={loading}
               className="w-full py-3 bg-gradient-to-r from-sky-500 to-teal-500 hover:from-sky-600 hover:to-teal-600 text-white font-semibold rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
+              {loading ? (
+                <span className="inline-flex items-center justify-center gap-1">
+                  กำลังเข้าสู่ระบบ
+                  <span className="inline-flex gap-1 ml-1">
+                    <span className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{animationDelay: '0ms'}} />
+                    <span className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{animationDelay: '150ms'}} />
+                    <span className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{animationDelay: '300ms'}} />
+                  </span>
+                </span>
+              ) : (
+                'เข้าสู่ระบบ'
+              )}
             </button>
           </form>
 
