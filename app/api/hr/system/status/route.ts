@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getHrSession } from '@/lib/getSession';
 import { prisma } from '@/lib/prisma';
+import { getR2Stats } from '@/lib/r2/upload';
 
 // GET /api/hr/system/status - ดูสถานะระบบ (super admin เท่านั้น)
 export async function GET(req: NextRequest) {
@@ -20,14 +21,20 @@ export async function GET(req: NextRequest) {
       dbError = error.message;
     }
 
-    // 2. Blob storage stats
-    const attachments = await prisma.attachment.findMany({
-      select: { fileSize: true },
-    });
-    const blobUsedBytes = attachments.reduce((sum, a) => sum + a.fileSize, 0);
-    const blobUsedMB = (blobUsedBytes / (1024 * 1024)).toFixed(2);
-    const blobTotalMB = 1024;
-    const blobPercent = ((blobUsedBytes / (blobTotalMB * 1024 * 1024)) * 100).toFixed(1);
+    // 2. R2 storage stats (get actual usage from Cloudflare R2)
+    let r2UsedBytes = 0;
+    let r2Error = null;
+    try {
+      const r2Stats = await getR2Stats();
+      r2UsedBytes = r2Stats.totalSize;
+    } catch (error: any) {
+      r2Error = error.message;
+      console.error('Failed to get R2 stats:', error);
+    }
+
+    const blobUsedMB = (r2UsedBytes / (1024 * 1024));
+    const blobTotalMB = 10240; // 10 GB limit for R2 free tier
+    const blobPercent = ((r2UsedBytes / (blobTotalMB * 1024 * 1024)) * 100);
 
     // 3. Telegram status
     const settings = await prisma.settings.findUnique({
@@ -57,9 +64,10 @@ export async function GET(req: NextRequest) {
         message: dbError || 'เชื่อมต่อสำเร็จ',
       },
       blob: {
-        usedMB: parseFloat(blobUsedMB as string),
+        usedMB: parseFloat(blobUsedMB.toFixed(2)),
         totalMB: blobTotalMB,
-        percentage: parseFloat(blobPercent as string),
+        percentage: parseFloat(blobPercent.toFixed(1)),
+        error: r2Error,
       },
       telegram: {
         configured: telegramConfigured,

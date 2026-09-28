@@ -711,7 +711,7 @@ export default function AdminClient({ hrUser }: AdminClientProps) {
                       </p>
                     </div>
 
-                    {/* Blob Storage */}
+                    {/* Cloudflare R2 Storage */}
                     <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800">
                       <div className="flex items-center gap-3 mb-3">
                         <div className={`p-2 rounded-lg ${
@@ -730,7 +730,7 @@ export default function AdminClient({ hrUser }: AdminClientProps) {
                           }`} />
                         </div>
                         <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                          Blob Storage
+                          Cloudflare R2
                         </h3>
                       </div>
                       <div className="mb-2">
