@@ -123,10 +123,11 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
   // Prefetch approvals page and data after dashboard loads
   useEffect(() => {
     if (!loading && summary) {
-      // Prefetch the route
+      // Prefetch primary routes
       router.prefetch('/hr/approvals');
+      router.prefetch('/hr/leaves');
 
-      // Prefetch the API data
+      // Prefetch the API data for approvals (small, high-priority)
       fetch('/api/hr/leaves?status=pending').catch(() => {
         // Silent fail - this is just prefetching
       });
