@@ -310,10 +310,13 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
         <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="max-w-4xl mx-auto px-4 py-3">
             <div className="flex items-start gap-3 mb-2">
-              <img
+              <motion.img
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5 }}
                 src="/icons/icon-192.png"
                 alt="Logo"
-                className="w-12 h-12 rounded-lg flex-shrink-0"
+                className="w-[60px] h-[60px] rounded-lg flex-shrink-0"
               />
               <div className="min-w-0 flex-1">
                 <p className="text-label text-secondary mb-1 flex items-center gap-2">
