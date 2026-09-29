@@ -35,11 +35,6 @@ export function PWARegister() {
         .catch((error) => {
           console.error('Service Worker registration failed:', error);
         });
-
-      // Handle service worker controller change
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        window.location.reload();
-      });
     }
   }, []);
 
