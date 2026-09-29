@@ -502,7 +502,7 @@ export default function HomePage() {
               ไม่มีครูลาวันนี้ 🎉
             </h3>
             <p className="text-body-sm text-secondary">
-              ทุกคนมาปฏิบัติงานครบ — โรงเรียนเต็มไปด้วยความพร้อม
+              ทุกคนมาปฏิบัติงานครบ
             </p>
           </motion.div>
         )}

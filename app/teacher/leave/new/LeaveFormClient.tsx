@@ -434,7 +434,7 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
       </header>
 
       {/* Content */}
-      <main className="max-w-2xl mx-auto px-4 py-6">
+      <main className="max-w-2xl mx-auto px-4 py-6 pb-32">
         <AnimatePresence mode="wait">
           {currentStep === 1 && (
             <LeaveTypeStep
