@@ -18,7 +18,8 @@ import {
   ChevronRight,
   Eye,
   X,
-  KeyRound
+  KeyRound,
+  Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { CountUp } from '@/components/CountUp';
@@ -114,10 +115,23 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
   useEffect(() => {
     setCurrentDate(new Date());
   }, []);
-	
+
   useEffect(() => {
     fetchAllDashboardData();
   }, [selectedMonth]);
+
+  // Prefetch approvals page and data after dashboard loads
+  useEffect(() => {
+    if (!loading && summary) {
+      // Prefetch the route
+      router.prefetch('/hr/approvals');
+
+      // Prefetch the API data
+      fetch('/api/hr/leaves?status=pending').catch(() => {
+        // Silent fail - this is just prefetching
+      });
+    }
+  }, [loading, summary, router]);
   
   // Intersection Observer for lazy loading heatmap
   useEffect(() => {
@@ -342,146 +356,181 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
 
         <main className="max-w-7xl mx-auto px-4 py-4 space-y-4">
           {/* Stats cards */}
-          {loading ? (
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="bg-white dark:bg-slate-900 rounded-xl p-4 h-28 animate-pulse" />
-              ))}
-            </div>
-          ) : summary ? (
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-              {/* Attending */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-md transition-all"
-                onClick={() => router.push('/hr/teachers')}
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
-                    <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                  <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                    มาปฏิบัติงาน
-                  </h3>
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            {/* Attending */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-md transition-all"
+              onClick={() => !loading && router.push('/hr/teachers')}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+                  <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 </div>
-                <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 leading-none">
-                  <CountUp end={summary.attendingToday} /> <span className="text-base text-slate-500 font-normal ml-1">คน</span>
-                </p>
-              </motion.div>
+                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                  มาปฏิบัติงาน
+                </h3>
+              </div>
+              <div className="text-3xl font-bold text-slate-900 dark:text-slate-100 leading-none flex items-center gap-2">
+                {loading ? (
+                  <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+                ) : summary ? (
+                  <>
+                    <CountUp end={summary.attendingToday} /> <span className="text-base text-slate-500 font-normal ml-1">คน</span>
+                  </>
+                ) : (
+                  <span className="text-xl text-slate-400">-</span>
+                )}
+              </div>
+            </motion.div>
 
-              {/* Pending */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                onClick={async () => {
-                  try {
-                    const res = await fetch('/api/hr/leaves?status=pending');
-                    const data = await res.json();
-                    setModalData(data.leaves || []);
-                    setModalType('pending');
-                  } catch (error) {
-                    toast.error('ไม่สามารถโหลดข้อมูลได้');
-                  }
-                }}
-                className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-amber-300 dark:hover:border-amber-700 hover:shadow-md transition-all"
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="p-1.5 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-                    <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  </div>
-                  <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                    รออนุมัติ
-                  </h3>
+            {/* Pending */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              onClick={async () => {
+                if (loading) return;
+                try {
+                  const res = await fetch('/api/hr/leaves?status=pending');
+                  const data = await res.json();
+                  setModalData(data.leaves || []);
+                  setModalType('pending');
+                } catch (error) {
+                  toast.error('ไม่สามารถโหลดข้อมูลได้');
+                }
+              }}
+              className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-amber-300 dark:hover:border-amber-700 hover:shadow-md transition-all"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-1.5 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+                  <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                 </div>
-                <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 leading-none">
-                  <CountUp end={summary.pendingCount} /> <span className="text-base text-slate-500 font-normal ml-1">ใบ</span>
-                </p>
-              </motion.div>
+                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                  รออนุมัติ
+                </h3>
+              </div>
+              <div className="text-3xl font-bold text-slate-900 dark:text-slate-100 leading-none flex items-center gap-2">
+                {loading ? (
+                  <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+                ) : summary ? (
+                  <>
+                    <CountUp end={summary.pendingCount} /> <span className="text-base text-slate-500 font-normal ml-1">ใบ</span>
+                  </>
+                ) : (
+                  <span className="text-xl text-slate-400">-</span>
+                )}
+              </div>
+            </motion.div>
 
-              {/* Leaves today */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-sky-300 dark:hover:border-sky-700 hover:shadow-md transition-all"
-                onClick={async () => {
-                  try {
-                    const res = await fetch('/api/hr/dashboard/leaves-today');
-                    const data = await res.json();
-                    setModalData(data.leaves || []);
-                    setModalType('today');
-                  } catch (error) {
-                    toast.error('ไม่สามารถโหลดข้อมูลได้');
-                  }
-                }}
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="p-1.5 bg-sky-100 dark:bg-sky-900/30 rounded-lg">
-                    <UserMinus className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                  </div>
-                  <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                    ลาวันนี้
-                  </h3>
+            {/* Leaves today */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-sky-300 dark:hover:border-sky-700 hover:shadow-md transition-all"
+              onClick={async () => {
+                if (loading) return;
+                try {
+                  const res = await fetch('/api/hr/dashboard/leaves-today');
+                  const data = await res.json();
+                  setModalData(data.leaves || []);
+                  setModalType('today');
+                } catch (error) {
+                  toast.error('ไม่สามารถโหลดข้อมูลได้');
+                }
+              }}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-1.5 bg-sky-100 dark:bg-sky-900/30 rounded-lg">
+                  <UserMinus className="w-4 h-4 text-sky-600 dark:text-sky-400" />
                 </div>
-                <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 leading-none">
-                  <CountUp end={summary.leavesToday} /> <span className="text-base text-slate-500 font-normal ml-1">คน</span>
-                </p>
-              </motion.div>
+                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                  ลาวันนี้
+                </h3>
+              </div>
+              <div className="text-3xl font-bold text-slate-900 dark:text-slate-100 leading-none flex items-center gap-2">
+                {loading ? (
+                  <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
+                ) : summary ? (
+                  <>
+                    <CountUp end={summary.leavesToday} /> <span className="text-base text-slate-500 font-normal ml-1">คน</span>
+                  </>
+                ) : (
+                  <span className="text-xl text-slate-400">-</span>
+                )}
+              </div>
+            </motion.div>
 
-              {/* Leaves tomorrow */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-amber-300 dark:hover:border-amber-700 hover:shadow-md transition-all"
-                onClick={async () => {
-                  try {
-                    const res = await fetch('/api/hr/dashboard/leaves-tomorrow');
-                    const data = await res.json();
-                    setModalData(data.leaves || []);
-                    setModalType('tomorrow');
-                  } catch (error) {
-                    toast.error('ไม่สามารถโหลดข้อมูลได้');
-                  }
-                }}
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="p-1.5 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-                    <Calendar className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  </div>
-                  <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                    ลาพรุ่งนี้
-                  </h3>
+            {/* Leaves tomorrow */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-amber-300 dark:hover:border-amber-700 hover:shadow-md transition-all"
+              onClick={async () => {
+                if (loading) return;
+                try {
+                  const res = await fetch('/api/hr/dashboard/leaves-tomorrow');
+                  const data = await res.json();
+                  setModalData(data.leaves || []);
+                  setModalType('tomorrow');
+                } catch (error) {
+                  toast.error('ไม่สามารถโหลดข้อมูลได้');
+                }
+              }}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-1.5 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+                  <Calendar className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                 </div>
-                <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 leading-none">
-                  <CountUp end={summary.leavesTomorrow} /> <span className="text-base text-slate-500 font-normal ml-1">คน</span>
-                </p>
-              </motion.div>
+                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                  ลาพรุ่งนี้
+                </h3>
+              </div>
+              <div className="text-3xl font-bold text-slate-900 dark:text-slate-100 leading-none flex items-center gap-2">
+                {loading ? (
+                  <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+                ) : summary ? (
+                  <>
+                    <CountUp end={summary.leavesTomorrow} /> <span className="text-base text-slate-500 font-normal ml-1">คน</span>
+                  </>
+                ) : (
+                  <span className="text-xl text-slate-400">-</span>
+                )}
+              </div>
+            </motion.div>
 
-              {/* Exceeding */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-red-300 dark:hover:border-red-700 hover:shadow-md transition-all"
-                onClick={() => router.push('/hr/teachers?filter=exceeding')}
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="p-1.5 bg-red-100 dark:bg-red-900/30 rounded-lg">
-                    <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
-                  </div>
-                  <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                    เกินเกณฑ์
-                  </h3>
+            {/* Exceeding */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-red-300 dark:hover:border-red-700 hover:shadow-md transition-all"
+              onClick={() => !loading && router.push('/hr/teachers?filter=exceeding')}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-1.5 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                  <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
                 </div>
-                <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 leading-none">
-                  <CountUp end={summary.exceedingCount} /> <span className="text-base text-slate-500 font-normal ml-1">คน</span>
-                </p>
-              </motion.div>
-            </div>
-          ) : null}
+                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                  เกินเกณฑ์
+                </h3>
+              </div>
+              <div className="text-3xl font-bold text-slate-900 dark:text-slate-100 leading-none flex items-center gap-2">
+                {loading ? (
+                  <Loader2 className="w-8 h-8 animate-spin text-red-500" />
+                ) : summary ? (
+                  <>
+                    <CountUp end={summary.exceedingCount} /> <span className="text-base text-slate-500 font-normal ml-1">คน</span>
+                  </>
+                ) : (
+                  <span className="text-xl text-slate-400">-</span>
+                )}
+              </div>
+            </motion.div>
+          </div>
 
           {/* Two-column layout: Leaves Today + Heatmap Calendar */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" id="leaves-today-section">

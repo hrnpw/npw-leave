@@ -46,7 +46,6 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [requireSignature, setRequireSignature] = useState(false);
-  const [loadingSettings, setLoadingSettings] = useState(true);
 
   const [formData, setFormData] = useState<LeaveFormData>({
     type: null,
@@ -70,7 +69,6 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
 
   const loadSettings = async () => {
     try {
-      setLoadingSettings(true);
       const res = await fetch('/api/teacher/settings/signature-required');
       if (res.ok) {
         const data = await res.json();
@@ -78,8 +76,6 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
       }
     } catch (error) {
       console.error('Failed to load settings:', error);
-    } finally {
-      setLoadingSettings(false);
     }
   };
 
@@ -392,18 +388,6 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
     }
     return false;
   };
-
-  // Show loading while settings are loading
-  if (loadingSettings) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-          <p className="text-slate-600 dark:text-slate-400">กำลังโหลด...</p>
-        </div>
-      </div>
-    );
-  }
 
   const totalSteps = requireSignature ? 4 : 3;
 

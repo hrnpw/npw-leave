@@ -233,28 +233,7 @@ export default function HomePage() {
     setPullDistance(0);
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-        <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-          {/* Header skeleton */}
-          <div className="flex items-center justify-between">
-            <div className="h-8 w-64 bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200 dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 rounded animate-shimmer bg-[length:200%_100%]" />
-            <div className="h-10 w-10 bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200 dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 rounded-lg animate-shimmer bg-[length:200%_100%]" />
-          </div>
-
-          {/* Cards skeleton */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200 dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 rounded-2xl p-6 h-32 animate-shimmer bg-[length:200%_100%]" />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !summary) {
+  if (error) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
         <div className="text-center">
@@ -270,7 +249,7 @@ export default function HomePage() {
     );
   }
 
-  const currentDate = new Date(summary.date);
+  const currentDate = summary ? new Date(summary.date) : new Date();
 
   return (
     <div
@@ -353,7 +332,7 @@ export default function HomePage() {
 
       <main className="max-w-4xl mx-auto px-4 py-3 space-y-section">
         {/* Holiday banner */}
-        {summary.todayHoliday && (
+        {summary?.todayHoliday && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -383,9 +362,15 @@ export default function HomePage() {
                 มาปฏิบัติงาน
               </h3>
             </div>
-            <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 leading-none tabular-nums">
-              <CountUp end={summary.attendingToday} duration={1.5} /> <span className="text-body-sm text-tertiary font-normal ml-1">คน</span>
-            </p>
+            {loading || !summary ? (
+              <div className="h-8 flex items-center">
+                <RefreshCw className="w-5 h-5 text-emerald-500 dark:text-emerald-400 animate-spin" />
+              </div>
+            ) : (
+              <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 leading-none tabular-nums">
+                <CountUp end={summary.attendingToday} duration={1.5} /> <span className="text-body-sm text-tertiary font-normal ml-1">คน</span>
+              </p>
+            )}
           </motion.div>
 
           {/* Second row wrapper for mobile (2 cards side by side) */}
@@ -405,9 +390,15 @@ export default function HomePage() {
                   ลาวันนี้
                 </h3>
               </div>
-              <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 leading-none tabular-nums">
-                <CountUp end={summary.leavesToday} duration={1.5} /> <span className="text-body-sm text-tertiary font-normal ml-1">คน</span>
-              </p>
+              {loading || !summary ? (
+                <div className="h-8 flex items-center">
+                  <RefreshCw className="w-5 h-5 text-sky-500 dark:text-sky-400 animate-spin" />
+                </div>
+              ) : (
+                <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 leading-none tabular-nums">
+                  <CountUp end={summary.leavesToday} duration={1.5} /> <span className="text-body-sm text-tertiary font-normal ml-1">คน</span>
+                </p>
+              )}
             </motion.div>
 
             {/* Leaves tomorrow */}
@@ -425,7 +416,11 @@ export default function HomePage() {
                   ลาพรุ่งนี้
                 </h3>
               </div>
-              {summary.tomorrowHoliday ? (
+              {loading || !summary ? (
+                <div className="h-8 flex items-center">
+                  <RefreshCw className="w-5 h-5 text-amber-500 dark:text-amber-400 animate-spin" />
+                </div>
+              ) : summary.tomorrowHoliday ? (
                 <p className="text-label text-secondary leading-snug">
                   พรุ่งนี้เป็นวันหยุด
                 </p>
@@ -439,7 +434,7 @@ export default function HomePage() {
         </div>
 
         {/* Leave list */}
-        {summary.leavesByType.length > 0 ? (
+        {loading || !summary ? null : summary.leavesByType.length > 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}

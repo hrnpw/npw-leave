@@ -134,6 +134,9 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
 
       // Lazy load timeline data separately
       fetchTimelineData();
+
+      // Prefetch the leave form route since it's the primary CTA
+      router.prefetch('/teacher/leave/new');
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
       toast.error('ไม่สามารถโหลดข้อมูลได้');
@@ -354,22 +357,27 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
 
         <main className="max-w-4xl mx-auto px-4 py-3 space-y-section">
           {/* Upcoming Leaves */}
-          {!loading && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/30 dark:to-blue-950/30 rounded-xl border border-sky-200 dark:border-sky-800 p-3 shadow-lg shadow-sky-200/60 dark:shadow-sky-950/80"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-heading-sm flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  ใบลาที่กำลังจะถึง
-                </h2>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/30 dark:to-blue-950/30 rounded-xl border border-sky-200 dark:border-sky-800 p-3 shadow-lg shadow-sky-200/60 dark:shadow-sky-950/80"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-heading-sm flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                ใบลาที่กำลังจะถึง
+              </h2>
+              {!loading && (
                 <span className="text-label text-sky-700 dark:text-sky-400">
                   {upcomingLeaves.length} ใบ
                 </span>
+              )}
+            </div>
+            {loading ? (
+              <div className="h-24 flex items-center justify-center">
+                <RefreshCw className="w-6 h-6 text-sky-500 dark:text-sky-400 animate-spin" />
               </div>
-              {upcomingLeaves.length > 0 ? (
+            ) : upcomingLeaves.length > 0 ? (
                 <div className="space-y-2">
                   {upcomingLeaves.map((leave, idx) => {
                     const typeColors = LEAVE_TYPE_COLORS[leave.type] || LEAVE_TYPE_COLORS['other'];
@@ -461,49 +469,46 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
                   <p>ไม่มีใบลาที่กำลังจะถึง</p>
                 </motion.div>
               )}
-            </motion.div>
-          )}
+          </motion.div>
 
           {/* Stats Overview */}
-          {loading ? (
-            <div className="grid grid-cols-2 gap-3">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-24 bg-white dark:bg-slate-900 rounded-xl animate-pulse" />
-              ))}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-heading-sm flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" />
+                สถิติการลารอบนี้
+              </h2>
             </div>
-          ) : stats ? (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-heading-sm flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4" />
-                  สถิติการลารอบนี้
-                </h2>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {(['sick', 'personal', 'maternity', 'religious'] as LeaveType[]).map((type, idx) => {
-                  const stat = stats[type];
-                  const typeColors = LEAVE_TYPE_COLORS[type];
-                  const hasData = stat.count > 0;
+            <div className="grid grid-cols-2 gap-2">
+              {(['sick', 'personal', 'maternity', 'religious'] as LeaveType[]).map((type, idx) => {
+                const stat = stats?.[type];
+                const typeColors = LEAVE_TYPE_COLORS[type];
+                const hasData = !loading && !!stat && stat.count > 0;
 
-                  return (
-                    <motion.div
-                      key={type}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 + idx * 0.1, type: 'spring', damping: 25 }}
-                      whileHover={{ scale: 1.03, y: -2 }}
-                      onClick={() => handleStatCardClick(type)}
-                      className={`p-3 rounded-xl border transition-all ${
-                        hasData
-                          ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60 hover:shadow-xl hover:shadow-sky-200/50 dark:hover:shadow-sky-950/50 hover:border-sky-300 dark:hover:border-sky-700 cursor-pointer'
-                          : 'bg-slate-50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-800/50 cursor-default shadow-sm'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className={`px-2 py-0.5 text-caption rounded border ${typeColors.light} ${typeColors.dark}`}>
-                          {LEAVE_TYPE_LABELS[type]}
-                        </span>
+                return (
+                  <motion.div
+                    key={type}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 + idx * 0.1, type: 'spring', damping: 25 }}
+                    whileHover={hasData ? { scale: 1.03, y: -2 } : undefined}
+                    onClick={() => stat && handleStatCardClick(type)}
+                    className={`p-3 rounded-xl border transition-all ${
+                      hasData
+                        ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60 hover:shadow-xl hover:shadow-sky-200/50 dark:hover:shadow-sky-950/50 hover:border-sky-300 dark:hover:border-sky-700 cursor-pointer'
+                        : 'bg-slate-50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-800/50 cursor-default shadow-sm'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`px-2 py-0.5 text-caption rounded border ${typeColors.light} ${typeColors.dark}`}>
+                        {LEAVE_TYPE_LABELS[type]}
+                      </span>
+                    </div>
+                    {loading || !stat ? (
+                      <div className="h-[52px] flex items-center">
+                        <RefreshCw className="w-5 h-5 text-slate-400 dark:text-slate-500 animate-spin" />
                       </div>
+                    ) : (
                       <div className="space-y-1">
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-3xl font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
@@ -515,12 +520,12 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
                           <CountUp end={stat.count} duration={1.5} /> ครั้ง
                         </div>
                       </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
+                    )}
+                  </motion.div>
+                );
+              })}
             </div>
-          ) : null}
+          </div>
 
           {/* Leave Timeline - Lazy loaded */}
           {timeline && (
