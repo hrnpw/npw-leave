@@ -117,8 +117,7 @@ export default function HomePage() {
 
       setHeatmapData(heatmapData.heatmap);
       setHolidays(heatmapData.holidays);
-      initialDateRef.current = today.getTime(); // Set before setCurrentHeatmapDate to prevent double fetch
-      setCurrentHeatmapDate(today);
+      initialDateRef.current = today.getTime();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'ไม่สามารถโหลดข้อมูลได้';
       setError(message);
