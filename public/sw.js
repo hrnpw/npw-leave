@@ -1,5 +1,5 @@
 // Service Worker for Leave-NPW PWA
-const CACHE_NAME = 'leave-npw-v3'; // Bumped version to clear old cache
+const CACHE_NAME = 'leave-npw-v4'; // Bumped version to clear old cache
 const STATIC_ASSETS = [
   '/offline',
   '/manifest.json',
@@ -111,6 +111,7 @@ self.addEventListener('fetch', (event) => {
       '/api/hr/leaves/pending',
       '/api/hr/leaves/pendingCount',
       '/api/teacher/leaves/status',
+      '/api/teacher/push/',
     ];
 
     const isRealtime = realtimeEndpoints.some(endpoint =>
@@ -215,4 +216,57 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+});
+
+// Push event - show notification
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch { data = {}; }
+  const title = data.title || 'Leave-NPW';
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.body || '',
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      tag: data.tag,
+      data: { url: data.url || '/teacher' },
+    })
+  );
+});
+
+// Notification click - focus or open the target URL
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = new URL(event.notification.data?.url || '/teacher', self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if ('focus' in client) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    })
+  );
+});
+
+// Browser rotated the subscription - re-register it with the server
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil(
+    (async () => {
+      const newSubscription = event.newSubscription || (await self.registration.pushManager.getSubscription());
+      if (!newSubscription) return;
+
+      try {
+        await fetch('/api/teacher/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(JSON.parse(JSON.stringify(newSubscription))),
+        });
+      } catch {
+        // Session may be expired; client will re-sync on next app open.
+      }
+    })()
+  );
 });

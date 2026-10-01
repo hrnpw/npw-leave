@@ -23,12 +23,28 @@ model Teacher {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   leaves      Leave[]
+  pushSubscriptions PushSubscription[]
 
   @@index([citizenId])
   @@index([isActive])
   @@index([department])
   @@index([teacherCode, isActive])
   @@map("teachers")
+}
+
+model PushSubscription {
+  id         String   @id @default(cuid())
+  teacherId  String   @map("teacher_id")
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+  lastUsedAt DateTime @default(now()) @map("last_used_at")
+  teacher    Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId])
+  @@map("push_subscriptions")
 }
 
 model HrUser {

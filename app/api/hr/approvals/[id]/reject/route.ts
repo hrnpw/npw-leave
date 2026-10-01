@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { after } from 'next/server';
 import { getHrSession } from '@/lib/getSession';
 import { prisma } from '@/lib/prisma';
 import { errorResponse, ErrorCodes } from '@/lib/apiResponse';
 import { createAuditLog, AuditActions, AuditResources } from '@/lib/auditLog';
+import { sendPushToTeacher } from '@/lib/push/send';
 
 export async function POST(
   request: NextRequest,
@@ -77,6 +79,15 @@ export async function POST(
       ipAddress: request.headers.get('x-forwarded-for') || undefined,
       userAgent: request.headers.get('user-agent') || undefined,
     });
+
+    after(() =>
+      sendPushToTeacher(leave.teacherId, {
+        title: 'ใบลาไม่ได้รับการอนุมัติ',
+        body: `ใบลาเลขที่ ${leave.leaveNo} - ${leave.teacher.firstName} ${leave.teacher.lastName} ไม่ได้รับการอนุมัติ แตะเพื่อดูรายละเอียด`,
+        url: `/teacher/leaves/${leave.id}`,
+        tag: `leave-${leave.id}`,
+      })
+    );
 
     return NextResponse.json({
       success: true,

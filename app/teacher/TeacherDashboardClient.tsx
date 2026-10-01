@@ -6,6 +6,7 @@ import { FileText, Plus, History, LogOut, Clock, TrendingUp, Calendar, Home, Plu
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { SessionWarning } from '@/components/SessionWarning';
+import { PushNotificationToggle } from '@/components/PushNotificationToggle';
 import { CountUp } from '@/components/CountUp';
 import { getThaiGreeting, formatFullThaiDate, formatThaiDateShort } from '@/lib/thaiDate';
 import { LEAVE_TYPE_LABELS, LEAVE_STATUS_LABELS, LEAVE_TYPE_COLORS, LEAVE_STATUS_COLORS } from '@/types/leave';
@@ -343,6 +344,7 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
                   รหัส: {teacher.teacherCode}
                 </p>
               </div>
+              <PushNotificationToggle />
               <button
                 onClick={handleLogout}
                 disabled={loggingOut}

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { after } from 'next/server';
 import { getHrSession } from '@/lib/getSession';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog } from '@/lib/audit/logger';
+import { sendPushToTeacher } from '@/lib/push/send';
 
 export async function POST(
   request: NextRequest,
@@ -135,6 +137,15 @@ export async function POST(
       ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined,
       userAgent: request.headers.get('user-agent') || undefined,
     }).catch(err => console.error('[APPROVE] Audit log failed (non-blocking):', err));
+
+    after(() =>
+      sendPushToTeacher(leave.teacherId, {
+        title: 'ใบลาได้รับการอนุมัติ',
+        body: `ใบลาเลขที่ ${leave.leaveNo} - ${leave.teacher.firstName} ${leave.teacher.lastName} ได้รับการอนุมัติแล้ว`,
+        url: `/teacher/leaves/${leave.id}`,
+        tag: `leave-${leave.id}`,
+      })
+    );
 
     return NextResponse.json({
       success: true,
