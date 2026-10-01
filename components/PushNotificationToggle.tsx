@@ -5,10 +5,6 @@ import { Bell, BellOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
-// Shows the opt-in modal once per device, so returning teachers aren't
-// re-prompted every login.
-const PROMPT_SEEN_KEY = 'push-prompt-seen-v1';
-
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -73,9 +69,7 @@ export function PushNotificationToggle() {
       if (!subscription) {
         if (!cancelled) {
           setStatus('unsubscribed');
-          if (!localStorage.getItem(PROMPT_SEEN_KEY)) {
-            setShowPrompt(true);
-          }
+          setShowPrompt(true);
         }
         return;
       }
@@ -98,7 +92,6 @@ export function PushNotificationToggle() {
   }, []);
 
   const dismissPrompt = () => {
-    localStorage.setItem(PROMPT_SEEN_KEY, '1');
     setShowPrompt(false);
   };
 
@@ -225,7 +218,7 @@ export function PushNotificationToggle() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed inset-x-4 bottom-24 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 md:w-full md:max-w-md z-[60]"
+              className="fixed inset-x-4 top-1/2 -translate-y-1/2 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-md z-[60]"
             >
               <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6">
                 <div className="flex items-start gap-4">
@@ -238,6 +231,7 @@ export function PushNotificationToggle() {
                     </h3>
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
                       รับการแจ้งเตือนทันทีเมื่อใบลาของคุณได้รับการอนุมัติหรือไม่อนุมัติ
+                      กดที่ไอคอนกระดิ่งด้านบนหรือปุ่มด้านล่างเพื่อเปิดการแจ้งเตือน
                     </p>
                     <div className="flex gap-3">
                       <button
