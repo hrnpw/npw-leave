@@ -16,7 +16,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
-    const { firstName, lastName, position, signatureUrl, isActive } = body;
+    const { title, firstName, lastName, position, signatureUrl, isActive } = body;
 
     // Check if signatory exists
     const existing = await prisma.signatory.findUnique({
@@ -32,6 +32,16 @@ export async function PATCH(
 
     // Build update data
     const updateData: any = {};
+
+    if (title !== undefined) {
+      if (!title.trim()) {
+        return NextResponse.json(
+          { error: 'กรุณากรอกคำนำหน้า' },
+          { status: 400 }
+        );
+      }
+      updateData.title = title.trim();
+    }
 
     if (firstName !== undefined) {
       if (!firstName.trim()) {
