@@ -5,6 +5,8 @@
 - เพิ่มการ web push
 @web-push-plan.md
 
+- ระวังเรื่อง database, migration
+
 ## Code 
 
 <!-- BEGIN:nextjs-agent-rules -->
