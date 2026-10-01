@@ -2,10 +2,7 @@
 
 ระบบยื่น/อนุมัติใบลาสำหรับโรงเรียน (Mobile Web App, Next.js + PWA)
 
-- เพิ่มการ web push
-@web-push-plan.md
 
-- ระวังเรื่อง database, migration
 
 ## Code 
 
