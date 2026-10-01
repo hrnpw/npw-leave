@@ -47,7 +47,7 @@ VAPID_PRIVATE_KEY="............................"
 VAPID_SUBJECT="mailto:admin@example.com"
 ```
 
-หมายเหตุ: `.env.example` มีการแก้ค้างอยู่ใน working tree (ไม่ใช่งานนี้) ให้เพิ่มต่อท้ายโดยไม่แตะส่วนอื่น
+หมายเหตุ: `.env.example` ให้เพิ่มต่อท้ายโดยไม่แตะส่วนอื่น
 
 ### 2. Prisma schema + migration
 
@@ -167,12 +167,17 @@ self.addEventListener('pushsubscriptionchange', (event) => {
 
 ### 7. Logout
 
-ใน `TeacherDashboardClient.tsx` ก่อนเรียก `/api/auth/teacher/logout` (บรรทัด ~183):
+**ไม่ต้องลบ subscription ตอน logout** เนื่องจาก:
 
-- ถ้ามี subscription: เรียก `DELETE /api/teacher/push/subscribe` กับ endpoint แล้ว `sub.unsubscribe()`
-- ครอบด้วย try/catch และตั้ง timeout สั้น ๆ ห้ามทำให้ logout ค้างหรือล้มเหลว
+- ครูใช้อุปกรณ์ส่วนตัว ไม่มีการยืม/แชร์กัน
+- ครูยังคงได้รับการแจ้งเตือนแม้ไม่ได้เปิดแอป/ล็อกเอาต์อยู่
+- ไม่ต้องเปิดการแจ้งเตือนใหม่ทุกครั้งที่ login
+- สอดคล้องกับหลักการที่ระบุไว้แล้วว่า "Session หมดอายุ (30 นาที) ไม่ลบ subscription"
 
-ถ้ามีจุด logout อื่นของครู (ค้นหา `/api/auth/teacher/logout` ทั้งโปรเจกต์) ให้ทำเหมือนกัน ควรแยกเป็น helper `lib/push/client.ts` แล้วใช้ร่วมกัน
+Subscription จะถูกย้ายเจ้าของอัตโนมัติเมื่อ:
+
+- ครูคนอื่นล็อกอินบนเครื่องเดิมแล้วเปิดการแจ้งเตือน (ตาม upsert logic ใน subscribe API)
+- ครูกดปิดการแจ้งเตือนเองผ่านปุ่ม "ปิดการแจ้งเตือน" ใน UI
 
 ### 8. เรียกส่ง push ใน approve / reject
 
@@ -202,7 +207,7 @@ after(() =>
 ## Verification
 
 1. `npx prisma generate`, `npx tsc --noEmit`, `npm test`, `npm run build` ต้องผ่านทั้งหมด
-2. ทดสอบมือ (production build, ใส่ VAPID key ใน `.env.local`):
+2. ทดสอบมือ (production build, ใส่ VAPID key ใน `.env`):
    - Android Chrome / desktop Chrome: ล็อกอินครู เปิดแจ้งเตือน, ล็อกอิน HR อนุมัติ → ได้แจ้งเตือน แตะแล้วเปิด `/teacher/leaves/{id}`
    - ไม่อนุมัติ → ได้แจ้งเตือนแบบไม่อนุมัติ
    - iOS 16.4+ ต้องติดตั้งลงหน้าจอโฮมก่อน ทดสอบบน HTTPS (deploy preview) เท่านั้น

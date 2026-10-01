@@ -2,8 +2,8 @@
 
 ระบบยื่น/อนุมัติใบลาสำหรับโรงเรียน (Mobile Web App, Next.js + PWA)
 
-- ปรับปรุงและพัฒนา performance
-- แก้บัค
+- เพิ่มการ web push
+@web-push-plan.md
 
 ## Code 
 
