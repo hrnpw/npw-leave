@@ -120,6 +120,7 @@ model Leave {
   @@index([status, startDate, endDate])
   @@index([teacherId, type, status, createdAt])
   @@index([type, status])
+  @@index([type, status, createdAt])
   @@index([status, type, createdAt, teacherId, daysCalendar])
   @@index([teacherId, status, startDate])
   @@index([teacherId, createdAt])

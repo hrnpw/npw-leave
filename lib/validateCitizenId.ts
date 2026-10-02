@@ -1,31 +1,12 @@
+import { validateCitizenId } from './citizenId';
+
 /**
- * Validates Thai citizen ID using Modulus 11 algorithm
+ * Validates Thai citizen ID using Modulus 11 algorithm (delegates to lib/citizenId)
  * @param id Citizen ID (13 digits, with or without dashes)
  * @returns true if valid, false otherwise
  */
 export function validateThaiCitizenId(id: string): boolean {
-  // Remove dashes and spaces
-  const cleaned = id.replace(/[-\s]/g, '');
-
-  // Must be exactly 13 digits
-  if (cleaned.length !== 13 || !/^\d{13}$/.test(cleaned)) {
-    return false;
-  }
-
-  const digits = cleaned.split('').map(Number);
-  const checkDigit = digits[12];
-
-  // Calculate sum with weights 13 down to 2
-  let sum = 0;
-  for (let i = 0; i < 12; i++) {
-    sum += digits[i] * (13 - i);
-  }
-
-  // Calculate check digit
-  const mod = sum % 11;
-  const calculated = (11 - mod) % 10;
-
-  return calculated === checkDigit;
+  return validateCitizenId(id);
 }
 
 /**

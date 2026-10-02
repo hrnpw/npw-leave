@@ -19,7 +19,7 @@ async function main() {
     create: {
       id: 'singleton',
       schoolName: 'โรงเรียนบ้านเนินพลับหวาน',
-      systemStartDate: new Date(2026, 0, 1), // Jan 1, 2026
+      systemStartDate: new Date('2026-01-01T00:00:00.000Z'), // Jan 1, 2026 (UTC, avoids local TZ shift on @db.Date)
       backdateLimitDays: 14,
       hrBackdateLimitDays: 30,
       quotaSickPersonal: 23,
@@ -30,8 +30,11 @@ async function main() {
   });
   console.log('✅ Created settings');
 
-  // Create super admin (password: change-me-on-first-login)
-  const adminPassword = process.env.BOOTSTRAP_ADMIN_PASSWORD || 'admin123';
+  // Create super admin (password from BOOTSTRAP_ADMIN_PASSWORD, no default)
+  const adminPassword = process.env.BOOTSTRAP_ADMIN_PASSWORD;
+  if (!adminPassword) {
+    throw new Error('BOOTSTRAP_ADMIN_PASSWORD is required to run seed');
+  }
   const admin = await prisma.hrUser.upsert({
     where: { username: 'admin' },
     update: {},
@@ -46,20 +49,25 @@ async function main() {
   });
   console.log('✅ Created super admin:', admin.username);
 
-  // Create HR user
-  const hr = await prisma.hrUser.upsert({
-    where: { username: 'hr001' },
-    update: {},
-    create: {
-      username: 'hr001',
-      passwordHash: hashPassword('hr123'),
-      firstName: 'สมหญิง',
-      lastName: 'ใจดี',
-      role: 'hr',
-      isActive: true,
-    },
-  });
-  console.log('✅ Created HR user:', hr.username);
+  // Create HR test user (only when SEED_HR_PASSWORD is set)
+  const hrPassword = process.env.SEED_HR_PASSWORD;
+  if (hrPassword) {
+    const hr = await prisma.hrUser.upsert({
+      where: { username: 'hr001' },
+      update: {},
+      create: {
+        username: 'hr001',
+        passwordHash: hashPassword(hrPassword),
+        firstName: 'สมหญิง',
+        lastName: 'ใจดี',
+        role: 'hr',
+        isActive: true,
+      },
+    });
+    console.log('✅ Created HR user:', hr.username);
+  } else {
+    console.log('⏭️  Skipped HR user (SEED_HR_PASSWORD not set)');
+  }
 
   // Create sample teachers
   const teachers = await Promise.all([
@@ -80,11 +88,11 @@ async function main() {
       },
     }),
     prisma.teacher.upsert({
-      where: { citizenId: '1234567890120' },
+      where: { citizenId: '1234567890121' },
       update: {},
       create: {
         teacherCode: 'T-0002',
-        citizenId: '1234567890120',
+        citizenId: '1234567890121',
         title: 'นาง',
         firstName: 'สมหญิง',
         lastName: 'รักเรียน',
@@ -96,11 +104,11 @@ async function main() {
       },
     }),
     prisma.teacher.upsert({
-      where: { citizenId: '9876543210987' },
+      where: { citizenId: '9876543210989' },
       update: {},
       create: {
         teacherCode: 'T-0003',
-        citizenId: '9876543210987',
+        citizenId: '9876543210989',
         title: 'นางสาว',
         firstName: 'มาลี',
         lastName: 'สดใส',
@@ -114,24 +122,26 @@ async function main() {
   ]);
   console.log(`✅ Created ${teachers.length} teachers`);
 
-  // Create holidays for 2026
+  // Create holidays for 2026 (UTC dates so @db.Date stores the intended day)
+  const newYear = new Date('2026-01-01T00:00:00.000Z');
+  const chakriDay = new Date('2026-04-06T00:00:00.000Z');
   const holidays = await Promise.all([
     prisma.holiday.upsert({
-      where: { date: new Date(2026, 0, 1) },
+      where: { date: newYear },
       update: {},
       create: {
-        date: new Date(2026, 0, 1),
+        date: newYear,
         name: 'วันขึ้นปีใหม่',
-        year: 2026,
+        year: 2569, // พ.ศ. (same as /api/hr/holidays)
       },
     }),
     prisma.holiday.upsert({
-      where: { date: new Date(2026, 3, 6) },
+      where: { date: chakriDay },
       update: {},
       create: {
-        date: new Date(2026, 3, 6),
+        date: chakriDay,
         name: 'วันจักรี',
-        year: 2026,
+        year: 2569, // พ.ศ. (same as /api/hr/holidays)
       },
     }),
   ]);
@@ -177,9 +187,9 @@ async function main() {
   console.log('✅ Created signatories');
 
   console.log('🎉 Seed completed!');
-  console.log('\n📝 Login credentials:');
-  console.log('Super Admin - username: admin, password:', adminPassword);
-  console.log('HR - username: hr001, password: hr123');
+  console.log('\n📝 Login:');
+  console.log('Super Admin - username: admin, password: (BOOTSTRAP_ADMIN_PASSWORD)');
+  if (hrPassword) console.log('HR - username: hr001, password: (SEED_HR_PASSWORD)');
   console.log('\nTeacher login (citizen ID + birthdate):');
   console.log('- 1101700207951 / 15/01/2528');
 }

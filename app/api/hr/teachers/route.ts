@@ -3,6 +3,7 @@ import { getHrSession } from '@/lib/getSession';
 import { prisma } from '@/lib/prisma';
 import { errorResponse, ErrorCodes } from '@/lib/apiResponse';
 import { createAuditLog, AuditActions, AuditResources } from '@/lib/auditLog';
+import { validateCitizenId } from '@/lib/citizenId';
 
 // GET /api/hr/teachers - ดึงรายการครูทั้งหมด (พร้อม search + filter)
 export async function GET(request: NextRequest) {
@@ -263,17 +264,4 @@ export async function POST(request: NextRequest) {
       error
     );
   }
-}
-
-// Validate Thai citizen ID checksum
-function validateCitizenId(id: string): boolean {
-  if (id.length !== 13) return false;
-
-  let sum = 0;
-  for (let i = 0; i < 12; i++) {
-    sum += parseInt(id[i]) * (13 - i);
-  }
-
-  const checkDigit = (11 - (sum % 11)) % 10;
-  return checkDigit === parseInt(id[12]);
 }
