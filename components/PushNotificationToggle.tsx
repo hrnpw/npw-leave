@@ -162,19 +162,20 @@ export function PushNotificationToggle() {
     return null;
   }
 
-  if (status === 'ios-need-install') {
-    return (
-      <p className="text-[11px] text-slate-500 dark:text-slate-400">
-        เพิ่มแอปไปยังหน้าจอโฮมก่อนเพื่อรับการแจ้งเตือน
-      </p>
-    );
-  }
+  if (status === 'ios-need-install' || status === 'denied') {
+    const hint =
+      status === 'ios-need-install'
+        ? 'เพิ่มแอปไปยังหน้าจอโฮมก่อนเพื่อรับการแจ้งเตือน'
+        : 'เปิดสิทธิ์การแจ้งเตือนในการตั้งค่าเครื่องเพื่อรับการแจ้งเตือน';
 
-  if (status === 'denied') {
     return (
-      <p className="text-[11px] text-slate-500 dark:text-slate-400">
-        เปิดสิทธิ์การแจ้งเตือนในการตั้งค่าเครื่องเพื่อรับการแจ้งเตือน
-      </p>
+      <button
+        onClick={() => toast.info(hint)}
+        aria-label={hint}
+        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all active:scale-95 flex-shrink-0"
+      >
+        <BellOff className="w-5 h-5 text-slate-400 dark:text-slate-500" />
+      </button>
     );
   }
 
