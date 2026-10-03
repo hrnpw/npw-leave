@@ -21,7 +21,7 @@ import { toast } from 'sonner';
 import { parseError, getSuccessMessage } from '@/lib/errorMessages';
 import { parseDateFromAPI, isSameDay } from '@/lib/client-date-utils';
 import { formatThaiDate, formatThaiDateShort } from '@/lib/thaiDate';
-import { ConfirmCancelSheet } from '@/components/ConfirmCancelSheet';
+import { ConfirmCancelDialog } from '@/components/ConfirmCancelDialog';
 import type { LeaveType, LeaveStatus } from '@/types/leave';
 import {
   LEAVE_TYPE_LABELS,
@@ -419,7 +419,7 @@ export default function LeaveHistoryClient({ teacher }: LeaveHistoryClientProps)
         )}
       </main>
 
-      <ConfirmCancelSheet
+      <ConfirmCancelDialog
         open={confirmLeave !== null}
         leaveNo={confirmLeave?.leaveNo}
         loading={cancellingId !== null}

@@ -25,7 +25,7 @@ import {
   LEAVE_STATUS_COLORS,
 } from '@/types/leave';
 import { formatThaiDate, formatThaiDateShort } from '@/lib/thaiDate';
-import { ConfirmCancelSheet } from '@/components/ConfirmCancelSheet';
+import { ConfirmCancelDialog } from '@/components/ConfirmCancelDialog';
 
 interface LeaveDetailClientProps {
   leaveId: string;
@@ -483,7 +483,7 @@ export default function LeaveDetailClient({ leaveId, teacher }: LeaveDetailClien
         )}
       </main>
 
-      <ConfirmCancelSheet
+      <ConfirmCancelDialog
         open={confirmOpen}
         leaveNo={leave.leaveNo}
         loading={cancelling}
