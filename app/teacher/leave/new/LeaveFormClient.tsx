@@ -44,6 +44,8 @@ const STORAGE_KEY = 'teacher_leave_draft';
 export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
+  const [direction, setDirection] = useState(1);
+  const [hasOverlap, setHasOverlap] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [requireSignature, setRequireSignature] = useState(false);
 
@@ -154,13 +156,16 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
     }
 
     // Auto-advance from step 1 when type is selected
-    if (currentStep === 1 && formData.type) {
+    if (currentStep === 1 && formData.type && (formData.type !== 'other' || formData.customTypeName.trim())) {
+      setDirection(1);
       setCurrentStep(2);
-    } else if (currentStep === 2 && formData.startDate && formData.endDate) {
+    } else if (currentStep === 2 && formData.startDate && formData.endDate && !hasOverlap) {
+      setDirection(1);
       setCurrentStep(3);
     } else if (currentStep === 3 && formData.reason.trim().length >= 10 && formData.contactAddress.trim()) {
       // Only advance to step 4 if signature is required
       if (requireSignature) {
+        setDirection(1);
         setCurrentStep(4);
       }
     }
@@ -168,6 +173,7 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
 
   const handleBack = () => {
     if (currentStep > 1) {
+      setDirection(-1);
       setCurrentStep(currentStep - 1);
     } else {
       router.back();
@@ -264,7 +270,7 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
       const overlapData = await overlapRes.json();
 
       if (overlapData.hasOverlap) {
-        const overlapInfo = overlapData.overlappingLeave;
+        const overlapInfo = overlapData.overlappingLeaves?.[0];
         toast.error('ช่วงวันที่ทับซ้อนกับใบลาเดิม', {
           description: overlapInfo
             ? `ท่านมีใบลา ${overlapInfo.leaveNo || ''} อยู่แล้วในช่วงนี้ กรุณาเลือกวันอื่น`
@@ -321,6 +327,28 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
 
       const result = await submitRes.json();
 
+      // Upload attachments (leave already created, so failures don't block submission)
+      let failedUploads = 0;
+      for (const file of formData.files) {
+        try {
+          const fd = new FormData();
+          fd.append('file', file);
+          const res = await fetch(`/api/teacher/leaves/${result.leave.id}/attachments`, {
+            method: 'POST',
+            body: fd,
+          });
+          if (!res.ok) failedUploads++;
+        } catch {
+          failedUploads++;
+        }
+      }
+      if (failedUploads > 0) {
+        toast.warning(`แนบไฟล์ไม่สำเร็จ ${failedUploads} ไฟล์`, {
+          description: 'ใบลายื่นเรียบร้อยแล้ว กรุณาติดต่อฝ่ายบุคคลเพื่อส่งไฟล์เพิ่มเติม',
+          duration: 6000,
+        });
+      }
+
       // Haptic success
       if ('vibrate' in navigator) {
         navigator.vibrate([10, 50, 10]);
@@ -334,8 +362,7 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
         duration: 4000,
       });
 
-      // Navigate to success page or dashboard
-      router.push('/teacher');
+      router.push('/teacher?success=true');
     } catch (error: any) {
       console.error('Submit error:', error);
 
@@ -371,10 +398,10 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
 
   const canProceed = () => {
     if (currentStep === 1) {
-      return formData.type !== null;
+      return formData.type !== null && (formData.type !== 'other' || formData.customTypeName.trim().length > 0);
     }
     if (currentStep === 2) {
-      return formData.startDate !== null && formData.endDate !== null;
+      return formData.startDate !== null && formData.endDate !== null && !hasOverlap;
     }
     if (currentStep === 3) {
       return (
@@ -435,13 +462,15 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
 
       {/* Content */}
       <main className="max-w-2xl mx-auto px-4 py-6 pb-32">
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="wait" custom={direction}>
           {currentStep === 1 && (
             <LeaveTypeStep
               key="step1"
               formData={formData}
               updateFormData={updateFormData}
               onNext={handleNext}
+              direction={direction}
+              showDesktopNext
             />
           )}
 
@@ -451,6 +480,8 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
               formData={formData}
               updateFormData={updateFormData}
               onNext={handleNext}
+              direction={direction}
+              onOverlapChange={setHasOverlap}
             />
           )}
 
@@ -463,6 +494,7 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
               onSubmit={requireSignature ? handleNext : handleSubmit}
               submitting={submitting}
               requireSignature={requireSignature}
+              direction={direction}
             />
           )}
 
@@ -473,6 +505,7 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
               updateFormData={updateFormData}
               onSubmit={handleSubmit}
               submitting={submitting}
+              direction={direction}
             />
           )}
         </AnimatePresence>

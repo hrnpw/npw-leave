@@ -22,7 +22,10 @@ import {
   ChevronDown,
   ChevronUp,
   Printer,
+  RefreshCw,
 } from 'lucide-react';
+import { PullToRefreshIndicator } from '@/components/PullToRefreshIndicator';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { toast } from 'sonner';
 import type { LeaveStatus, LeaveType, HalfDayPeriod } from '@/types/leave';
 import {
@@ -107,6 +110,7 @@ export default function LeavesClient({ hrUser }: LeavesClientProps) {
   const [stats, setStats] = useState<any>(null);
   const [departments, setDepartments] = useState<string[]>([]);
   const [expandedLeaves, setExpandedLeaves] = useState<Set<string>>(new Set());
+  const [refreshing, setRefreshing] = useState(false);
 
   // Get default fiscal year and round
   const defaultFiscalData = getCurrentFiscalYearAndRound();
@@ -145,9 +149,9 @@ export default function LeavesClient({ hrUser }: LeavesClientProps) {
     fetchDepartments();
   }, [searchParams.toString()]); // ใช้ .toString() แทนเพื่อเปรียบเทียบค่าจริงๆ
 
-  const fetchLeaves = async () => {
+  const fetchLeaves = async (showSkeleton = true) => {
     try {
-      setLoading(true);
+      if (showSkeleton) setLoading(true);
       const params = new URLSearchParams(searchParams.toString());
       const res = await fetch(`/api/hr/leaves?${params}`);
       if (!res.ok) throw new Error('Failed to fetch');
@@ -161,6 +165,20 @@ export default function LeavesClient({ hrUser }: LeavesClientProps) {
       toast.error('ไม่สามารถโหลดรายการใบลาได้');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const refreshData = () => Promise.all([fetchLeaves(false), fetchStats()]);
+
+  const { pull, state: pullState, threshold: pullThreshold } = usePullToRefresh(refreshData);
+
+  const handleRefreshClick = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await refreshData();
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -178,17 +196,10 @@ export default function LeavesClient({ hrUser }: LeavesClientProps) {
 
   const fetchDepartments = async () => {
     try {
-      const res = await fetch('/api/hr/teachers/active');
+      const res = await fetch('/api/hr/teachers/departments');
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
-      const uniqueDepts = Array.from(
-        new Set(
-          data.teachers
-            .map((t: any) => t.department)
-            .filter((d: string) => d)
-        )
-      ) as string[];
-      setDepartments(uniqueDepts.sort());
+      setDepartments(data.departments);
     } catch (error) {
       console.error('Failed to fetch departments:', error);
     }
@@ -344,6 +355,7 @@ export default function LeavesClient({ hrUser }: LeavesClientProps) {
   return (
     <HrLayoutWrapper hrUser={hrUser}>
       <div className="bg-slate-50 dark:bg-slate-950 pb-24 lg:pb-8">
+        <PullToRefreshIndicator pull={pull} state={pullState} threshold={pullThreshold} />
         {/* Header */}
         <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-20">
         <div className="max-w-5xl mx-auto px-4 py-3">
@@ -359,15 +371,28 @@ export default function LeavesClient({ hrUser }: LeavesClientProps) {
               )}
             </div>
 
-            <button
-              onClick={() => setShowFilter(!showFilter)}
-              className="relative p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
-            >
-              <Filter className="w-4 h-4 text-slate-700 dark:text-slate-300" />
-              {hasActiveFilters && (
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-sky-500 rounded-full" />
-              )}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleRefreshClick}
+                disabled={refreshing || loading}
+                className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50"
+                aria-label="รีเฟรชข้อมูล"
+              >
+                <RefreshCw
+                  className={`w-4 h-4 text-slate-700 dark:text-slate-300 ${refreshing ? 'animate-spin' : ''}`}
+                />
+              </button>
+              <button
+                onClick={() => setShowFilter(!showFilter)}
+                className="relative p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                aria-label="ตัวกรอง"
+              >
+                <Filter className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                {hasActiveFilters && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-sky-500 rounded-full" />
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Search bar */}

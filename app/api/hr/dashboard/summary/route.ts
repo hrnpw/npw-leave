@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getHrSession } from '@/lib/getSession';
 import { prisma } from '@/lib/prisma';
-import { shortCacheHeaders } from '@/lib/cacheHeaders';
+import { privateShortCacheHeaders } from '@/lib/cacheHeaders';
 
 export async function GET() {
   try {
@@ -101,7 +101,7 @@ export async function GET() {
       pendingCount,
       exceedingCount,
     }, {
-      headers: shortCacheHeaders,
+      headers: privateShortCacheHeaders,
     });
   } catch (error) {
     console.error('HR dashboard summary error:', error);

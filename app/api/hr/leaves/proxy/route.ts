@@ -27,7 +27,6 @@ export async function POST(req: NextRequest) {
       contactPhone,
       proxyReason,
       proxyNote,
-      attachments = [],
     } = body;
 
     // Validation
@@ -156,31 +155,17 @@ export async function POST(req: NextRequest) {
     });
 
     if (overlapping) {
-      // Check same-day half-day exception
-      const isSameDay =
-        overlapping.startDate.toDateString() === startDate.toDateString() &&
-        overlapping.endDate.toDateString() === endDate.toDateString();
-
-      if (
-        isSameDay &&
-        overlapping.isHalfDay &&
-        isHalfDay &&
-        overlapping.halfDayPeriod !== halfDayPeriod
-      ) {
-        // Allow: different half-day periods on same day
-      } else {
-        return NextResponse.json(
-          {
-            error: `ช่วงวันลาทับซ้อนกับใบลา ${overlapping.leaveNo}`,
-            overlappingLeave: {
-              leaveNo: overlapping.leaveNo,
-              startDate: overlapping.startDate.toISOString(),
-              endDate: overlapping.endDate.toISOString(),
-            },
+      return NextResponse.json(
+        {
+          error: `ช่วงวันลาทับซ้อนกับใบลา ${overlapping.leaveNo}`,
+          overlappingLeave: {
+            leaveNo: overlapping.leaveNo,
+            startDate: overlapping.startDate.toISOString(),
+            endDate: overlapping.endDate.toISOString(),
           },
-          { status: 400 }
-        );
-      }
+        },
+        { status: 400 }
+      );
     }
 
     // Calculate days - fetch holidays first
@@ -281,7 +266,6 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // TODO: Handle attachments (Phase 5 - Vercel Blob)
       // TODO: Audit log (will implement in Phase 6)
 
       return newLeave;

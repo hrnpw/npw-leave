@@ -100,6 +100,8 @@ export async function GET() {
           startDate: true,
           endDate: true,
           daysWorking: true,
+          isHalfDay: true,
+          halfDayPeriod: true,
         },
         orderBy: { startDate: 'asc' },
         take: 5,
@@ -136,40 +138,18 @@ export async function GET() {
       }
     });
 
-    // Fetch leaveDays only for upcoming leaves
-    const upcomingLeaveIds = upcomingLeavesData.map(l => l.id);
-    const leaveDaysForUpcoming = upcomingLeaveIds.length > 0
-      ? await prisma.leaveDay.findMany({
-          where: { leaveId: { in: upcomingLeaveIds } },
-          select: {
-            leaveId: true,
-            isHalfDay: true,
-            halfDayPeriod: true,
-          },
-          distinct: ['leaveId'],
-        })
-      : [];
-
-    const leaveDaysMap = new Map(
-      leaveDaysForUpcoming.map(ld => [ld.leaveId, ld])
-    );
-
-    // Process upcoming leaves
-    const upcomingLeaves = upcomingLeavesData.map(leave => {
-      const leaveDay = leaveDaysMap.get(leave.id);
-      return {
-        id: leave.id,
-        leaveNo: leave.leaveNo,
-        type: leave.type,
-        customTypeName: leave.customTypeName,
-        status: leave.status,
-        startDate: leave.startDate.toISOString(),
-        endDate: leave.endDate.toISOString(),
-        daysWorking: leave.daysWorking,
-        isHalfDay: leaveDay?.isHalfDay || false,
-        halfDayPeriod: leaveDay?.halfDayPeriod || null,
-      };
-    });
+    const upcomingLeaves = upcomingLeavesData.map(leave => ({
+      id: leave.id,
+      leaveNo: leave.leaveNo,
+      type: leave.type,
+      customTypeName: leave.customTypeName,
+      status: leave.status,
+      startDate: leave.startDate.toISOString(),
+      endDate: leave.endDate.toISOString(),
+      daysWorking: leave.daysWorking,
+      isHalfDay: leave.isHalfDay,
+      halfDayPeriod: leave.halfDayPeriod,
+    }));
 
     // Timeline data - ย้ายไปเป็น separate API endpoint แทน
     // เพื่อให้ dashboard โหลดเร็วขึ้น

@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 export const dynamic = 'force-dynamic'; // Uses cookies for auth
 
 // Simple in-memory cache (resets on server restart)
-let teachersCache: { data: any; timestamp: number } | null = null;
+const teachersCache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export async function GET(req: NextRequest) {
@@ -19,8 +19,9 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get('search') || '';
 
     // If no search query, try cache first
-    if (!search && teachersCache && Date.now() - teachersCache.timestamp < CACHE_TTL) {
-      return NextResponse.json(teachersCache.data, {
+    const cached = teachersCache.get(session.id);
+    if (!search && cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return NextResponse.json(cached.data, {
         headers: {
           'Cache-Control': 'private, max-age=300', // Client cache 5 minutes
         },
@@ -74,10 +75,10 @@ export async function GET(req: NextRequest) {
 
     // Cache only when no search query
     if (!search) {
-      teachersCache = {
+      teachersCache.set(session.id, {
         data: response,
         timestamp: Date.now(),
-      };
+      });
     }
 
     return NextResponse.json(response, {

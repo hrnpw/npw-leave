@@ -86,48 +86,30 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Use single groupBy query instead of 8 separate counts
-    const allLeaves = await prisma.leave.findMany({
-      where,
-      select: {
-        status: true,
-        type: true,
-      },
-    });
+    const [statusGroups, typeGroups] = await Promise.all([
+      prisma.leave.groupBy({ by: ['status'], where, _count: { _all: true } }),
+      prisma.leave.groupBy({ by: ['type'], where, _count: { _all: true } }),
+    ]);
 
-    // Calculate counts in memory (faster than 8 DB queries)
-    let pending = 0, reviewed = 0, approved = 0, rejected = 0;
-    let sick = 0, personal = 0, maternity = 0, religious = 0, other = 0;
-
-    for (const leave of allLeaves) {
-      // Count by status
-      if (leave.status === 'pending') pending++;
-      else if (leave.status === 'reviewed') reviewed++;
-      else if (leave.status === 'approved') approved++;
-      else if (leave.status === 'rejected') rejected++;
-
-      // Count by type
-      if (leave.type === 'sick') sick++;
-      else if (leave.type === 'personal') personal++;
-      else if (leave.type === 'maternity') maternity++;
-      else if (leave.type === 'religious') religious++;
-      else if (leave.type === 'other') other++;
-    }
+    const statusCount = (s: string) =>
+      statusGroups.find((g) => g.status === s)?._count._all ?? 0;
+    const typeCount = (t: string) =>
+      typeGroups.find((g) => g.type === t)?._count._all ?? 0;
 
     return NextResponse.json({
       byStatus: {
-        pending,
-        reviewed,
-        approved,
-        rejected,
-        total: allLeaves.length,
+        pending: statusCount('pending'),
+        reviewed: statusCount('reviewed'),
+        approved: statusCount('approved'),
+        rejected: statusCount('rejected'),
+        total: statusGroups.reduce((sum, g) => sum + g._count._all, 0),
       },
       byType: {
-        sick,
-        personal,
-        maternity,
-        religious,
-        other,
+        sick: typeCount('sick'),
+        personal: typeCount('personal'),
+        maternity: typeCount('maternity'),
+        religious: typeCount('religious'),
+        other: typeCount('other'),
       },
     });
   } catch (error) {

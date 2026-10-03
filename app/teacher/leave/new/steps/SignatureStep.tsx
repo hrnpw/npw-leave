@@ -7,15 +7,17 @@ import { Eraser, FileText, CheckCircle2 } from 'lucide-react';
 import type { LeaveFormData } from '../LeaveFormClient';
 import { LEAVE_TYPE_LABELS } from '@/types/leave';
 import { formatThaiDateShort } from '@/lib/thaiDate';
+import { stepVariants } from './stepTransition';
 
 interface SignatureStepProps {
   formData: LeaveFormData;
   updateFormData: (updates: Partial<LeaveFormData>) => void;
   onSubmit: () => void;
   submitting: boolean;
+  direction?: number;
 }
 
-export default function SignatureStep({ formData, updateFormData, onSubmit, submitting }: SignatureStepProps) {
+export default function SignatureStep({ formData, updateFormData, onSubmit, submitting, direction = 1 }: SignatureStepProps) {
   const sigPadRef = useRef<SignatureCanvas>(null);
   const [isEmpty, setIsEmpty] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
@@ -53,9 +55,11 @@ export default function SignatureStep({ formData, updateFormData, onSubmit, subm
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
+      custom={direction}
+      variants={stepVariants}
+      initial="enter"
+      animate="center"
+      exit="exit"
       className="space-y-4"
     >
       {/* Summary */}
@@ -89,7 +93,7 @@ export default function SignatureStep({ formData, updateFormData, onSubmit, subm
       </div>
 
       {/* Signature instruction */}
-      <div className="bg-sky-50 dark:bg-sky-900/20 border-2 border-sky-200 dark:border-sky-800 rounded-xl p-4 shadow-lg shadow-sky-200/60 dark:shadow-sky-950/60">
+      <div className="bg-sky-50 dark:bg-sky-900/20 border-2 border-sky-200 dark:border-sky-800 rounded-xl p-4">
         <div className="flex items-start gap-3">
           <FileText className="w-5 h-5 text-sky-600 dark:text-sky-400 flex-shrink-0 mt-0.5" />
           <div className="flex-1 space-y-1">

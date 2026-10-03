@@ -8,6 +8,7 @@ import imageCompression from 'browser-image-compression';
 import type { LeaveFormData } from '../LeaveFormClient';
 import { LEAVE_TYPE_LABELS } from '@/types/leave';
 import { formatThaiDateShort } from '@/lib/thaiDate';
+import { stepVariants } from './stepTransition';
 
 interface DetailsStepProps {
   formData: LeaveFormData;
@@ -17,9 +18,10 @@ interface DetailsStepProps {
   submitting: boolean;
   requireSignature: boolean;
   isHrMode?: boolean;
+  direction?: number;
 }
 
-export default function DetailsStep({ formData, updateFormData, onNext, onSubmit, submitting, requireSignature, isHrMode = false }: DetailsStepProps) {
+export default function DetailsStep({ formData, updateFormData, onNext, onSubmit, submitting, requireSignature, isHrMode = false, direction = 1 }: DetailsStepProps) {
   const [quotaWarning, setQuotaWarning] = useState<string | null>(null);
   const [loadingQuota, setLoadingQuota] = useState(true);
   const [compressing, setCompressing] = useState(false);
@@ -156,9 +158,11 @@ export default function DetailsStep({ formData, updateFormData, onNext, onSubmit
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
+      custom={direction}
+      variants={stepVariants}
+      initial="enter"
+      animate="center"
+      exit="exit"
       className="space-y-6 pb-24"
     >
       <div>
@@ -233,7 +237,7 @@ export default function DetailsStep({ formData, updateFormData, onNext, onSubmit
           minLength={10}
           maxLength={500}
           required
-          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all resize-none shadow-sm focus:shadow-lg focus:shadow-orange-200/30 dark:focus:shadow-orange-950/30"
+          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all resize-none shadow-sm"
         />
         <div className="flex justify-between mt-1">
           <p className={`text-xs ${formData.reason.length < 10 ? 'text-red-500' : 'text-slate-500 dark:text-slate-400'}`}>
@@ -258,7 +262,7 @@ export default function DetailsStep({ formData, updateFormData, onNext, onSubmit
           minLength={10}
           maxLength={300}
           required
-          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all resize-none shadow-sm focus:shadow-lg focus:shadow-orange-200/30 dark:focus:shadow-orange-950/30"
+          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all resize-none shadow-sm"
         />
       </div>
 
@@ -273,7 +277,7 @@ export default function DetailsStep({ formData, updateFormData, onNext, onSubmit
           onChange={(e) => updateFormData({ contactPhone: e.target.value })}
           placeholder="เช่น 0812345678 หรือ 081-234-5678"
           required
-          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition-all shadow-sm focus:shadow-lg focus:shadow-sky-200/30 dark:focus:shadow-sky-950/30"
+          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition-all shadow-sm"
         />
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
           กรอกเบอร์โทรศัพท์ที่สามารถติดต่อได้ระหว่างวันลา

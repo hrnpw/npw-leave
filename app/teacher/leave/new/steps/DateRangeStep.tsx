@@ -2,21 +2,36 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, AlertCircle, ArrowRight, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDateForAPI } from '@/lib/dateFormat';
 import type { HalfDayPeriod } from '@/types/leave';
 import type { LeaveFormData } from '../LeaveFormClient';
 import { formatThaiDate } from '@/lib/thaiDate';
+import { stepVariants } from './stepTransition';
 
 interface DateRangeStepProps {
   formData: LeaveFormData;
   updateFormData: (updates: Partial<LeaveFormData>) => void;
   onNext: () => void;
   isProxyMode?: boolean;
+  direction?: number;
+  teacherId?: string;
+  onOverlapChange?: (hasOverlap: boolean) => void;
 }
 
-export default function DateRangeStep({ formData, updateFormData, onNext, isProxyMode = false }: DateRangeStepProps) {
+interface OverlapLeave {
+  id: string;
+  leaveNo: string;
+  startDate: string;
+  endDate: string;
+  isHalfDay: boolean;
+  halfDayPeriod: string | null;
+}
+
+export default function DateRangeStep({ formData, updateFormData, onNext, isProxyMode = false, direction = 1, teacherId, onOverlapChange }: DateRangeStepProps) {
+  const [overlaps, setOverlaps] = useState<OverlapLeave[]>([]);
+  const [checkingOverlap, setCheckingOverlap] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectingStart, setSelectingStart] = useState(true);
   const [workingDays, setWorkingDays] = useState<number | null>(null);
@@ -39,6 +54,59 @@ export default function DateRangeStep({ formData, updateFormData, onNext, isProx
       calculateWorkingDays();
     }
   }, [formData.startDate, formData.endDate, formData.isHalfDay, formData.halfDayPeriod]);
+
+  useEffect(() => {
+    if (!formData.startDate || !formData.endDate || (isProxyMode && !teacherId)) {
+      setOverlaps([]);
+      setCheckingOverlap(false);
+      onOverlapChange?.(false);
+      return;
+    }
+
+    // Ignore responses from a previous selection that arrive late
+    let cancelled = false;
+    setCheckingOverlap(true);
+
+    (async () => {
+      try {
+        const res = await fetch(
+          isProxyMode ? '/api/hr/leaves/check-overlap' : '/api/teacher/leaves/check-overlap',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...(isProxyMode && { teacherId }),
+              startDate: formatDateForAPI(formData.startDate!),
+              endDate: formatDateForAPI(formData.endDate!),
+            }),
+          }
+        );
+        if (cancelled) return;
+        // Session errors are handled by the submit step; don't block here
+        if (!res.ok) {
+          setOverlaps([]);
+          onOverlapChange?.(false);
+          return;
+        }
+        const data = await res.json();
+        if (cancelled) return;
+        setOverlaps(data.overlappingLeaves ?? []);
+        onOverlapChange?.(Boolean(data.hasOverlap));
+      } catch (error) {
+        if (cancelled) return;
+        console.error('Failed to check overlap:', error);
+        setOverlaps([]);
+        onOverlapChange?.(false);
+      } finally {
+        if (!cancelled) setCheckingOverlap(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.startDate, formData.endDate, teacherId, isProxyMode]);
 
   const fetchBackdateLimit = async () => {
     try {
@@ -237,9 +305,11 @@ export default function DateRangeStep({ formData, updateFormData, onNext, isProx
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
+      custom={direction}
+      variants={stepVariants}
+      initial="enter"
+      animate="center"
+      exit="exit"
       className="space-y-6"
     >
       <div>
@@ -249,6 +319,7 @@ export default function DateRangeStep({ formData, updateFormData, onNext, isProx
           </h2>
           {formData.startDate && (
             <button
+              type="button"
               onClick={() => {
                 updateFormData({
                   startDate: null,
@@ -259,9 +330,10 @@ export default function DateRangeStep({ formData, updateFormData, onNext, isProx
                 setSelectingStart(true);
                 setWorkingDays(null);
               }}
-              className="text-sm text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 font-medium"
+              className="flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all active:scale-95"
             >
-              เลือกใหม่
+              <RotateCcw className="w-4 h-4" />
+              <span>เลือกใหม่</span>
             </button>
           )}
         </div>
@@ -328,7 +400,7 @@ export default function DateRangeStep({ formData, updateFormData, onNext, isProx
                   ${disabled ? 'text-slate-300 dark:text-slate-700 cursor-not-allowed' : ''}
                   ${isHoliday && !selected ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 line-through' : ''}
                   ${selected ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/40 scale-105' : ''}
-                  ${inRange && !selected ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 shadow-md shadow-orange-200/50 dark:shadow-orange-950/30' : ''}
+                  ${inRange && !selected ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' : ''}
                   ${!selected && !inRange && !disabled && !isHoliday ? 'hover:bg-slate-100 dark:hover:bg-slate-800 hover:shadow-sm active:scale-95' : ''}
                   ${!selected && !inRange && !disabled && !isHoliday && isWeekend ? 'text-red-600 dark:text-red-400' : ''}
                   ${!selected && !inRange && !disabled && !isHoliday && !isWeekend ? 'text-slate-900 dark:text-slate-100' : ''}
@@ -347,12 +419,41 @@ export default function DateRangeStep({ formData, updateFormData, onNext, isProx
         </div>
       </div>
 
+      {/* Overlap warning (right under the calendar so it's seen without scrolling) */}
+      {overlaps.length > 0 && (
+        <motion.div
+          role="alert"
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl"
+        >
+          <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+          <div className="flex-1 space-y-1">
+            <p className="text-sm font-medium text-red-800 dark:text-red-300">
+              ช่วงวันที่เลือกทับซ้อนกับใบลาที่มีอยู่แล้ว
+            </p>
+            <ul className="text-sm text-red-700 dark:text-red-400 space-y-0.5">
+              {overlaps.map((l) => (
+                <li key={l.id}>
+                  {l.leaveNo}: {formatThaiDate(new Date(l.startDate), 'd MMM yyyy')}
+                  {l.startDate !== l.endDate && <> - {formatThaiDate(new Date(l.endDate), 'd MMM yyyy')}</>}
+                  {l.isHalfDay && <> ({l.halfDayPeriod === 'morning' ? 'ครึ่งเช้า' : 'ครึ่งบ่าย'})</>}
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-red-600 dark:text-red-400">
+              กรุณาเลือกวันอื่น
+            </p>
+          </div>
+        </motion.div>
+      )}
+
       {/* Summary */}
       {formData.startDate && formData.endDate && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
-          className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-4 shadow-lg shadow-orange-200/60 dark:shadow-orange-950/40"
+          className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-4"
         >
           <div className="flex items-start gap-3">
             <Calendar className="w-5 h-5 text-orange-600 dark:text-orange-400 mt-0.5" />
@@ -452,10 +553,11 @@ export default function DateRangeStep({ formData, updateFormData, onNext, isProx
         <div className="hidden md:block">
           <button
             onClick={onNext}
-            className="w-full py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-xl shadow-sky-500/50 hover:shadow-2xl hover:shadow-sky-500/60"
+            disabled={overlaps.length > 0 || checkingOverlap}
+            className="w-full py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-xl font-semibold transition-all disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2 shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40"
           >
             <span>ถัดไป</span>
-            <Calendar className="w-5 h-5" />
+            <ArrowRight className="w-5 h-5" />
           </button>
         </div>
       )}

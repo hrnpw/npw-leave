@@ -25,6 +25,7 @@ import {
   LEAVE_STATUS_COLORS,
 } from '@/types/leave';
 import { formatThaiDate, formatThaiDateShort } from '@/lib/thaiDate';
+import { ConfirmCancelSheet } from '@/components/ConfirmCancelSheet';
 
 interface LeaveDetailClientProps {
   leaveId: string;
@@ -67,8 +68,17 @@ interface Leave {
   proxyReason?: string;
   attachments: Attachment[];
   createdAt: string;
-  approvedAt?: string;
-  printedAt?: string;
+  updatedAt: string;
+  reviewedAt?: string | null;
+  approvedAt?: string | null;
+  printedAt?: string | null;
+}
+
+interface TimelineEvent {
+  key: string;
+  label: string;
+  at: string;
+  dot: string;
 }
 
 export default function LeaveDetailClient({ leaveId, teacher }: LeaveDetailClientProps) {
@@ -76,6 +86,7 @@ export default function LeaveDetailClient({ leaveId, teacher }: LeaveDetailClien
   const [leave, setLeave] = useState<Leave | null>(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     fetchLeave();
@@ -113,11 +124,6 @@ export default function LeaveDetailClient({ leaveId, teacher }: LeaveDetailClien
   };
 
   const handleCancelLeave = async () => {
-    const confirmed = confirm(
-      'คุณต้องการยกเลิกใบลานี้หรือไม่?\n\nการยกเลิกจะไม่สามารถยกเลิกคำขอยกเลิกได้'
-    );
-    if (!confirmed) return;
-
     try {
       setCancelling(true);
 
@@ -142,6 +148,7 @@ export default function LeaveDetailClient({ leaveId, teacher }: LeaveDetailClien
       toast.error(error.message || 'ไม่สามารถยกเลิกใบลาได้');
     } finally {
       setCancelling(false);
+      setConfirmOpen(false);
     }
   };
 
@@ -195,6 +202,26 @@ export default function LeaveDetailClient({ leaveId, teacher }: LeaveDetailClien
       ? leave.customTypeName
       : LEAVE_TYPE_LABELS[leave.type];
   const canCancel = leave.status === 'pending';
+
+  // ใบที่ไม่อนุมัติ/ยกเลิกไม่มีคอลัมน์เวลาแยก จึงใช้ updatedAt เป็นเวลาของเหตุการณ์สุดท้าย
+  const timelineEvents: TimelineEvent[] = [
+    { key: 'created', label: 'ยื่นใบลา', at: leave.createdAt, dot: 'bg-sky-600 dark:bg-sky-400' },
+    ...(leave.reviewedAt
+      ? [{ key: 'reviewed', label: 'ตรวจสอบแล้ว', at: leave.reviewedAt, dot: 'bg-amber-500 dark:bg-amber-400' }]
+      : []),
+    ...(leave.approvedAt
+      ? [{ key: 'approved', label: 'อนุมัติ', at: leave.approvedAt, dot: 'bg-emerald-600 dark:bg-emerald-400' }]
+      : []),
+    ...(leave.printedAt
+      ? [{ key: 'printed', label: 'พิมพ์ใบลา', at: leave.printedAt, dot: 'bg-purple-600 dark:bg-purple-400' }]
+      : []),
+    ...(leave.status === 'rejected'
+      ? [{ key: 'rejected', label: 'ไม่อนุมัติ', at: leave.updatedAt, dot: 'bg-red-600 dark:bg-red-400' }]
+      : []),
+    ...(leave.status === 'cancelled'
+      ? [{ key: 'cancelled', label: 'ยกเลิกใบลา', at: leave.updatedAt, dot: 'bg-slate-500 dark:bg-slate-400' }]
+      : []),
+  ];
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24">
@@ -405,41 +432,37 @@ export default function LeaveDetailClient({ leaveId, teacher }: LeaveDetailClien
             <Clock className="w-4 h-4 text-sky-600 dark:text-sky-400" />
             <h2 className="font-semibold text-slate-900 dark:text-slate-100">Timeline</h2>
           </div>
-          <div className="space-y-3">
-            <div className="flex gap-3">
-              <div className="w-2 h-2 bg-sky-600 dark:bg-sky-400 rounded-full mt-1.5 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-slate-900 dark:text-slate-100">ยื่นใบลา</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {formatThaiDateShort(new Date(leave.createdAt))}
-                </p>
-              </div>
-            </div>
-            {leave.approvedAt && (
-              <div className="flex gap-3">
-                <div className="w-2 h-2 bg-emerald-600 dark:bg-emerald-400 rounded-full mt-1.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100">อนุมัติ</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {formatThaiDateShort(new Date(leave.approvedAt))}
-                  </p>
-                </div>
-              </div>
-            )}
-            {leave.printedAt && (
-              <div className="flex gap-3">
-                <div className="w-2 h-2 bg-purple-600 dark:bg-purple-400 rounded-full mt-1.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                    พิมพ์ใบลา
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {formatThaiDateShort(new Date(leave.printedAt))}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
+          <ol>
+            {timelineEvents.map((event, i) => {
+              const isLast = i === timelineEvents.length - 1;
+              return (
+                <li key={event.key} className={`relative flex gap-3 ${isLast ? '' : 'pb-4'}`}>
+                  {!isLast && (
+                    <motion.span
+                      aria-hidden="true"
+                      initial={{ scaleY: 0 }}
+                      animate={{ scaleY: 1 }}
+                      transition={{ duration: 0.3, delay: 0.3 + i * 0.15, ease: 'easeOut' }}
+                      className="absolute left-[3.5px] top-4 -bottom-1 w-px origin-top bg-slate-200 dark:bg-slate-700"
+                    />
+                  )}
+                  <motion.span
+                    aria-hidden="true"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 18, delay: 0.25 + i * 0.15 }}
+                    className={`relative w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${event.dot}`}
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{event.label}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {formatThaiDateShort(new Date(event.at))}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
         </motion.div>
 
         {/* Cancel Button */}
@@ -450,25 +473,23 @@ export default function LeaveDetailClient({ leaveId, teacher }: LeaveDetailClien
             transition={{ delay: 0.25 }}
           >
             <button
-              onClick={handleCancelLeave}
-              disabled={cancelling}
-              className="w-full py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 border border-red-200 dark:border-red-800"
+              onClick={() => setConfirmOpen(true)}
+              className="w-full py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-xl font-medium transition-all active:scale-[0.98] flex items-center justify-center gap-2 border border-red-200 dark:border-red-800"
             >
-              {cancelling ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-red-400 border-t-red-600 rounded-full animate-spin" />
-                  <span>กำลังยกเลิก...</span>
-                </>
-              ) : (
-                <>
-                  <Trash2 className="w-4 h-4" />
-                  <span>ยกเลิกใบลา</span>
-                </>
-              )}
+              <Trash2 className="w-4 h-4" aria-hidden="true" />
+              <span>ยกเลิกใบลา</span>
             </button>
           </motion.div>
         )}
       </main>
+
+      <ConfirmCancelSheet
+        open={confirmOpen}
+        leaveNo={leave.leaveNo}
+        loading={cancelling}
+        onConfirm={handleCancelLeave}
+        onClose={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }

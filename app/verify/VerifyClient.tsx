@@ -55,7 +55,6 @@ export default function VerifyClient() {
   const [citizenIdValid, setCitizenIdValid] = useState(false);
 
   const citizenInputRef = useRef<HTMLInputElement>(null);
-  const daySelectRef = useRef<HTMLSelectElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   // Digit count before the caret, restored after the value is re-formatted
@@ -98,8 +97,6 @@ export default function VerifyClient() {
         setCitizenIdError('เลขบัตรประชาชนไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง');
       } else {
         setCitizenIdError(null);
-        // Move on to the birth date once the ID is complete
-        if (!formData.birthDate.day) daySelectRef.current?.focus();
       }
     } else {
       setCitizenIdValid(false);
@@ -301,10 +298,9 @@ export default function VerifyClient() {
                     }
               }
             />		
-            {/* School name is shown below, so the logo is decorative */}
             <Image
               src="/icons/icon-192.png"
-              alt=""
+              alt="โรงเรียนบ้านเนินพลับหวาน"
               width={80}
               height={80}
               className="relative"
@@ -314,9 +310,6 @@ export default function VerifyClient() {
           <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
             ยืนยันตัวตน
           </h1>
-          <p className="text-slate-600 dark:text-slate-400">
-            โรงเรียนบ้านเนินพลับหวาน
-          </p>
         </motion.div>
 
         {/* Login form */}
@@ -401,7 +394,6 @@ export default function VerifyClient() {
                 {/* Day Dropdown */}
                 <div className="relative">
                   <select
-                    ref={daySelectRef}
                     value={day}
                     onChange={(e) => handleBirthDateChange('day', e.target.value)}
                     className={selectClass(Boolean(day))}

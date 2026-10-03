@@ -168,43 +168,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Check for overlapping leaves
+    // Any shared day is an overlap, including two half-day leaves on one date
     if (overlappingLeaves.length > 0) {
-      if (isSingleDay && body.isHalfDay) {
-        // For half-day requests, check if there's a conflict on the exact same date
-        const sameDateConflict = overlappingLeaves.find(l => {
-          const existingStart = new Date(l.startDate).setHours(0, 0, 0, 0);
-          const existingEnd = new Date(l.endDate).setHours(0, 0, 0, 0);
-          const newDate = startDateUTC.getTime();
-
-          // Check if new date falls within existing leave range
-          if (newDate < existingStart || newDate > existingEnd) {
-            return false;
-          }
-
-          // If on same date, check if same period
-          if (newDate === existingStart && newDate === existingEnd) {
-            // Both on same single day - conflict only if full day or same period
-            return !l.isHalfDay || l.halfDayPeriod === body.halfDayPeriod;
-          }
-
-          // New date falls within multi-day leave range
-          return true;
-        });
-
-        if (sameDateConflict) {
-          return NextResponse.json(
-            { error: 'มีใบลาที่ทับซ้อนกับช่วงเวลานี้แล้ว', overlappingLeaves },
-            { status: 409 }
-          );
-        }
-        // Allow: different half-day periods on same day
-      } else {
-        return NextResponse.json(
-          { error: 'มีใบลาที่ทับซ้อนกับช่วงเวลานี้แล้ว', overlappingLeaves },
-          { status: 409 }
-        );
-      }
+      return NextResponse.json(
+        { error: 'มีใบลาที่ทับซ้อนกับช่วงเวลานี้แล้ว', overlappingLeaves },
+        { status: 409 }
+      );
     }
 
     // Get holidays

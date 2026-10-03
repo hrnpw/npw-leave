@@ -19,8 +19,11 @@ import {
   Eye,
   X,
   KeyRound,
-  Loader2
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
+import { PullToRefreshIndicator } from '@/components/PullToRefreshIndicator';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { LeaveStatusIcon, LeaveStatusIconLegend } from '@/components/LeaveStatusIcon';
 import { toast } from 'sonner';
 import { CountUp } from '@/components/CountUp';
@@ -118,29 +121,25 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
   const [isHeatmapVisible, setIsHeatmapVisible] = useState(false);
   const heatmapRef = useRef<HTMLDivElement>(null);
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Fix hydration mismatch - set current date only on client
   useEffect(() => {
     setCurrentDate(new Date());
   }, []);
 
+  // Summary + leaves today do not depend on the selected month, so load them once
   useEffect(() => {
-    fetchAllDashboardData();
-  }, [selectedMonth]);
+    fetchSummaryData();
+  }, []);
 
-  // Prefetch approvals page and data after dashboard loads
+  // Prefetch approvals routes after dashboard loads
   useEffect(() => {
     if (!loading && summary) {
-      // Prefetch primary routes
       router.prefetch(queue.href);
       router.prefetch('/hr/leaves');
-
-      // Prefetch the API data for approvals (small, high-priority)
-      fetch(`/api/hr/leaves?status=${queue.countKey}`).catch(() => {
-        // Silent fail - this is just prefetching
-      });
     }
-  }, [loading, summary, router, queue.href, queue.countKey]);
+  }, [loading, summary, router, queue.href]);
   
   // Intersection Observer for lazy loading heatmap
   useEffect(() => {
@@ -167,62 +166,75 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
     };
   }, [isHeatmapVisible]);
 
-  // Fetch heatmap data when visible
+  // Fetch heatmap when it scrolls into view and whenever the month changes
   useEffect(() => {
     if (isHeatmapVisible) {
-      fetchAllDashboardData();
+      fetchHeatmapData();
     }
   }, [isHeatmapVisible, selectedMonth]);
 
-  const fetchAllDashboardData = async () => {
+  const refreshData = () =>
+    Promise.all([fetchSummaryData(false), isHeatmapVisible ? fetchHeatmapData(false) : null]);
+
+  const { pull, state: pullState, threshold: pullThreshold } = usePullToRefresh(refreshData);
+
+  const handleRefreshClick = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
     try {
-      setLoading(true);
-      setLoadingLeaves(true);
+      await refreshData();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
-      const year = selectedMonth.getFullYear();
-      const month = selectedMonth.getMonth() + 1;
+  const fetchSummaryData = async (showSkeleton = true) => {
+    try {
+      if (showSkeleton) {
+        setLoading(true);
+        setLoadingLeaves(true);
+      }
 
-      // Fetch dashboard summary and leaves today (fast)
-      const response = await fetch(`/api/hr/dashboard/all`);
+      const response = await fetch('/api/hr/dashboard/all');
       if (!response.ok) throw new Error('Failed to fetch');
 
       const data = await response.json();
-
-      // Set summary data
       setSummary(data.summary);
-
-      // Set leaves today
       setLeavesToday(data.leavesToday || []);
-
-      // Fetch heatmap separately when visible (lazy load)
-      if (isHeatmapVisible) {
-        setLoadingHeatmap(true);
-
-        // Fetch heatmap and holidays in parallel
-        Promise.all([
-          fetch(`/api/hr/dashboard/heatmap?year=${year}&month=${month}`).then(res => res.json()),
-          fetch(`/api/public/holidays?year=${year}&month=${month}`).then(res => res.json()),
-        ])
-          .then(([heatmapData, holidaysData]) => {
-            setHeatmapData(heatmapData.heatmap || []);
-
-            const holidayMap = new Map<string, string>(
-              holidaysData.holidays.map((h: { date: string; name: string }) => [
-                h.date.split('T')[0],
-                h.name
-              ])
-            );
-            setHolidays(holidayMap);
-          })
-          .catch(err => console.error('Failed to fetch heatmap:', err))
-          .finally(() => setLoadingHeatmap(false));
-      }
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
       toast.error('ไม่สามารถโหลดข้อมูลได้');
     } finally {
       setLoading(false);
       setLoadingLeaves(false);
+    }
+  };
+
+  const fetchHeatmapData = async (showSkeleton = true) => {
+    const year = selectedMonth.getFullYear();
+    const month = selectedMonth.getMonth() + 1;
+
+    try {
+      if (showSkeleton) setLoadingHeatmap(true);
+
+      const [heatmapRes, holidaysRes] = await Promise.all([
+        fetch(`/api/hr/dashboard/heatmap?year=${year}&month=${month}`).then((res) => res.json()),
+        fetch(`/api/public/holidays?year=${year}&month=${month}`).then((res) => res.json()),
+      ]);
+
+      setHeatmapData(heatmapRes.heatmap || []);
+      setHolidays(
+        new Map<string, string>(
+          holidaysRes.holidays.map((h: { date: string; name: string }) => [
+            h.date.split('T')[0],
+            h.name,
+          ])
+        )
+      );
+    } catch (err) {
+      console.error('Failed to fetch heatmap:', err);
+    } finally {
+      setLoadingHeatmap(false);
     }
   };
 
@@ -327,6 +339,7 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
       }}
     >
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20 lg:pb-4">
+        <PullToRefreshIndicator pull={pull} state={pullState} threshold={pullThreshold} />
         {/* Header */}
         <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
           <div className="max-w-7xl mx-auto px-4 py-4">
@@ -345,6 +358,16 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={handleRefreshClick}
+                  disabled={refreshing || loading}
+                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all active:scale-95 disabled:opacity-50 flex-shrink-0"
+                  aria-label="รีเฟรชข้อมูล"
+                >
+                  <RefreshCw
+                    className={`w-5 h-5 text-slate-600 dark:text-slate-400 ${refreshing ? 'animate-spin' : ''}`}
+                  />
+                </button>
                 <button
                   onClick={() => setShowChangePassword(true)}
                   className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all active:scale-95 flex-shrink-0"
@@ -444,16 +467,10 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
               className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-sky-300 dark:hover:border-sky-700 hover:shadow-md transition-all"
-              onClick={async () => {
+              onClick={() => {
                 if (loading) return;
-                try {
-                  const res = await fetch('/api/hr/dashboard/leaves-today');
-                  const data = await res.json();
-                  setModalData(data.leaves || []);
-                  setModalType('today');
-                } catch (error) {
-                  toast.error('ไม่สามารถโหลดข้อมูลได้');
-                }
+                setModalData(leavesToday);
+                setModalType('today');
               }}
             >
               <div className="flex items-center gap-2 mb-3">

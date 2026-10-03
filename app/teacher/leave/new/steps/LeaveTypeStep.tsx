@@ -1,15 +1,19 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Heart, Briefcase, Baby, Book, MoreHorizontal } from 'lucide-react';
+import { Heart, Briefcase, Baby, Book, MoreHorizontal, ArrowRight } from 'lucide-react';
 import type { LeaveType } from '@/types/leave';
 import { LEAVE_TYPE_LABELS, LEAVE_TYPE_COLORS } from '@/types/leave';
 import type { LeaveFormData } from '../LeaveFormClient';
+import { stepVariants } from './stepTransition';
 
 interface LeaveTypeStepProps {
   formData: LeaveFormData;
   updateFormData: (updates: Partial<LeaveFormData>) => void;
   onNext: () => void;
+  direction?: number;
+  showDesktopNext?: boolean;
 }
 
 const leaveTypes: Array<{ type: LeaveType; icon: React.ReactNode; description: string }> = [
@@ -40,7 +44,22 @@ const leaveTypes: Array<{ type: LeaveType; icon: React.ReactNode; description: s
   },
 ];
 
-export default function LeaveTypeStep({ formData, updateFormData, onNext }: LeaveTypeStepProps) {
+export default function LeaveTypeStep({ formData, updateFormData, onNext, direction = 1, showDesktopNext = false }: LeaveTypeStepProps) {
+  // The delayed advance must call the onNext from a later render, otherwise it
+  // still sees formData.type === null and never leaves this step.
+  const onNextRef = useRef(onNext);
+  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    onNextRef.current = onNext;
+  }, [onNext]);
+
+  useEffect(() => {
+    return () => {
+      if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    };
+  }, []);
+
   const handleSelectType = (type: LeaveType) => {
     updateFormData({ type });
 
@@ -49,9 +68,13 @@ export default function LeaveTypeStep({ formData, updateFormData, onNext }: Leav
       navigator.vibrate(10);
     }
 
-    // Auto-advance to next step after short delay
-    setTimeout(() => {
-      onNext();
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+
+    // "other" needs a custom name first, so the user advances manually
+    if (type === 'other') return;
+
+    advanceTimer.current = setTimeout(() => {
+      onNextRef.current();
     }, 300);
   };
 
@@ -61,9 +84,11 @@ export default function LeaveTypeStep({ formData, updateFormData, onNext }: Leav
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
+      custom={direction}
+      variants={stepVariants}
+      initial="enter"
+      animate="center"
+      exit="exit"
       className="space-y-4"
     >
       <div className="mb-6">
@@ -90,11 +115,11 @@ export default function LeaveTypeStep({ formData, updateFormData, onNext }: Leav
               transition={{ delay: idx * 0.05 }}
               onClick={() => handleSelectType(item.type)}
               className={`
-                p-6 rounded-2xl border-2 transition-all text-left
+                p-4 rounded-2xl border-2 transition-all text-left
                 ${
                   isSelected
                     ? `${colors.light} ${colors.dark} border-orange-500 dark:border-orange-400 shadow-xl shadow-orange-200/60 dark:shadow-orange-950/40 scale-[1.02]`
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-lg hover:shadow-slate-200/60 dark:hover:shadow-slate-950/40 shadow-md shadow-slate-200/40 dark:shadow-slate-950/30 active:scale-[0.98]'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 active:scale-[0.98]'
                 }
               `}
             >
@@ -146,12 +171,23 @@ export default function LeaveTypeStep({ formData, updateFormData, onNext }: Leav
             value={formData.customTypeName || ''}
             onChange={(e) => handleCustomTypeNameChange(e.target.value)}
             placeholder="เช่น ลาไปศาล, ลาอบรม"
-            className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition-all shadow-sm focus:shadow-lg focus:shadow-sky-200/30 dark:focus:shadow-sky-950/30"
+            className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition-all shadow-sm"
             maxLength={50}
+            autoFocus
           />
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             {(formData.customTypeName || '').length}/50 ตัวอักษร
           </p>
+          {showDesktopNext && (
+            <button
+              onClick={onNext}
+              disabled={!(formData.customTypeName || '').trim()}
+              className="hidden md:flex w-full mt-4 py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-xl font-semibold transition-all disabled:cursor-not-allowed items-center justify-center gap-2 shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 disabled:shadow-none"
+            >
+              <span>ถัดไป</span>
+              <ArrowRight className="w-5 h-5" />
+            </button>
+          )}
         </motion.div>
       )}
     </motion.div>

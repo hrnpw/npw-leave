@@ -10,7 +10,7 @@ import LeaveReviewCard from '@/components/hr/leaveReview/LeaveReviewCard';
 import LeaveReviewShell from '@/components/hr/leaveReview/LeaveReviewShell';
 import ConfirmLeaveDialog from '@/components/hr/leaveReview/ConfirmLeaveDialog';
 import RejectLeaveDialog from '@/components/hr/leaveReview/RejectLeaveDialog';
-import { usePullToRefresh } from '@/components/hr/leaveReview/usePullToRefresh';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { fetchLeaveList, postLeaveAction, vibrate } from '@/components/hr/leaveReview/api';
 import type { ReviewLeave } from '@/components/hr/leaveReview/types';
 
@@ -29,6 +29,7 @@ export default function ApprovalsClient({ hrUser }: ApprovalsClientProps) {
   const router = useRouter();
   const canAct = canApprove(hrUser.role);
   const [leaves, setLeaves] = useState<ReviewLeave[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [approvingLeave, setApprovingLeave] = useState<ReviewLeave | null>(null);
@@ -37,20 +38,35 @@ export default function ApprovalsClient({ hrUser }: ApprovalsClientProps) {
   const loadLeaves = useCallback(async (showSkeleton = true) => {
     if (showSkeleton) setLoading(true);
     const data = await fetchLeaveList('/api/hr/approvals/pending', 'ไม่สามารถโหลดรายการรออนุมัติได้');
-    if (data) setLeaves(data);
+    if (data) {
+      setLeaves(data.leaves);
+      setTotal(data.total);
+    }
     setLoading(false);
   }, []);
 
   useEffect(() => {
     loadLeaves();
-    // Auto-refresh every 60 seconds
-    const interval = setInterval(() => loadLeaves(false), 60000);
-    return () => clearInterval(interval);
+    // Auto-refresh every 60 seconds, but not while the tab is hidden
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') loadLeaves(false);
+    }, 60000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') loadLeaves(false);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [loadLeaves]);
 
-  const { pullDistance, isRefreshing } = usePullToRefresh(() => loadLeaves(false));
+  const { pull, state: pullState, threshold: pullThreshold } = usePullToRefresh(() => loadLeaves(false));
 
-  const removeLeave = (id: string) => setLeaves((prev) => prev.filter((l) => l.id !== id));
+  const removeLeave = (id: string) => {
+    setLeaves((prev) => prev.filter((l) => l.id !== id));
+    setTotal((prev) => Math.max(0, prev - 1));
+  };
 
   const confirmApprove = async () => {
     if (!approvingLeave) return;
@@ -98,9 +114,11 @@ export default function ApprovalsClient({ hrUser }: ApprovalsClientProps) {
     <HrLayoutWrapper hrUser={hrUser}>
       <LeaveReviewShell
         title="อนุมัติใบลา"
-        subtitle={`รอ ผอ. อนุมัติ ${leaves.length} ใบลา`}
-        pullDistance={pullDistance}
-        isRefreshing={isRefreshing}
+        subtitle={`รอ ผอ. อนุมัติ ${total} ใบลา`}
+        pull={pull}
+        pullState={pullState}
+        pullThreshold={pullThreshold}
+        onRefresh={() => loadLeaves(false)}
         readOnlyNote={canAct ? undefined : 'ดูได้อย่างเดียว การอนุมัติเป็นของผู้อำนวยการ'}
         loading={loading}
         isEmpty={leaves.length === 0}

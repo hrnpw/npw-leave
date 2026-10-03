@@ -82,6 +82,8 @@ export async function GET(
           fileUrl: att.blobUrl,
         })),
         createdAt: leave.createdAt.toISOString(),
+        updatedAt: leave.updatedAt.toISOString(),
+        reviewedAt: leave.reviewedAt?.toISOString() || null,
         approvedAt: leave.approvedAt?.toISOString() || null,
         printedAt: leave.printedAt?.toISOString() || null,
       },

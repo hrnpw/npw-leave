@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Users, UserMinus, Calendar, RefreshCw } from 'lucide-react';
+import { motion, AnimatePresence, MotionConfig, type Variants } from 'framer-motion';
+import { Users, UserMinus, Calendar, RefreshCw, Rocket } from 'lucide-react';
 import { CountUp } from '@/components/CountUp';
 import { DarkModeToggle } from '@/components/DarkModeToggle';
 import { HeatmapCalendar } from '@/components/HeatmapCalendar';
@@ -13,6 +13,9 @@ import { LEAVE_TYPE_LABELS, LEAVE_TYPE_COLORS, HALF_DAY_PERIOD_LABELS } from '@/
 import type { LeaveType, HalfDayPeriod, LeaveStatus } from '@/types/leave';
 import { fetchCache } from '@/lib/fetchCache';
 import { LeaveStatusIcon, LeaveStatusIconLegend } from '@/components/LeaveStatusIcon';
+import { BottomSheet } from '@/components/BottomSheet';
+import { PullToRefreshIndicator } from '@/components/PullToRefreshIndicator';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 
 interface PublicSummary {
   date: string;
@@ -58,25 +61,40 @@ interface HeatmapDay {
   leaves: DayLeave[];
 }
 
+const EASE = [0.16, 1, 0.3, 1] as const;
+
+const container: Variants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.06, delayChildren: 0.05 } },
+};
+
+const item: Variants = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: EASE } },
+};
+
+const listContainer: Variants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.04 } },
+};
+
+const row: Variants = {
+  hidden: { opacity: 0, x: -16 },
+  show: { opacity: 1, x: 0, transition: { duration: 0.3, ease: EASE } },
+  exit: { opacity: 0, transition: { duration: 0.15 } },
+};
+
 export default function HomePage() {
   const [summary, setSummary] = useState<PublicSummary | null>(null);
   const [heatmapData, setHeatmapData] = useState<HeatmapDay[]>([]);
   const [holidays, setHolidays] = useState<Array<{ date: string; name: string }>>([]);
   const [currentHeatmapDate, setCurrentHeatmapDate] = useState(new Date());
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedDayLeaves, setSelectedDayLeaves] = useState<DayLeave[]>([]);
-  const [pullStartY, setPullStartY] = useState(0);
-  const [pullStartX, setPullStartX] = useState(0);
-  const [pullDistance, setPullDistance] = useState(0);
-  const [isPulling, setIsPulling] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
   const initialLoadRef = useRef(false);
-  const initialDateRef = useRef(new Date().getTime());
 
   useEffect(() => {
     if (!initialLoadRef.current) {
@@ -86,47 +104,35 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    // Only fetch heatmap when month changes (not on initial load)
-    const currentTime = currentHeatmapDate.getTime();
-    if (initialLoadRef.current && currentTime !== initialDateRef.current) {
+    // Duplicate with the initial fetchData request is deduped by fetchCache
+    if (initialLoadRef.current) {
       fetchHeatmapData(currentHeatmapDate);
     }
   }, [currentHeatmapDate]);
 
-  const fetchData = async () => {
+  const fetchData = async (fresh = false) => {
     try {
-      setLoading(true);
       setError(null);
 
-      // Fetch summary first (fast - above the fold)
-      const summaryData = await fetchCache.fetch(
-        '/api/public/summary',
-        { cacheDuration: 60000 } // 60 seconds cache
-      );
+      const year = currentHeatmapDate.getFullYear();
+      const month = currentHeatmapDate.getMonth() + 1;
+      const options = { cacheDuration: 60000, cacheBust: fresh };
 
-      setSummary(summaryData);
-      setLastRefresh(new Date());
-      setLoading(false); // Show content immediately
-
-      // Then fetch heatmap (slower - below the fold)
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = today.getMonth() + 1;
-
-      const heatmapData = await fetchCache.fetch(
-        `/api/public/dashboard?year=${year}&month=${month}`,
-        { cacheDuration: 60000 }
-      );
-
-      setHeatmapData(heatmapData.heatmap);
-      setHolidays(heatmapData.holidays);
-      initialDateRef.current = today.getTime();
+      // Fire both requests together; each section renders as soon as its data arrives
+      await Promise.all([
+        fetchCache.fetch('/api/public/summary', options).then((data) => {
+          setSummary(data);
+          setLastRefresh(new Date());
+        }),
+        fetchCache.fetch(`/api/public/dashboard?year=${year}&month=${month}`, options).then((data) => {
+          setHeatmapData(data.heatmap);
+          setHolidays(data.holidays);
+        }),
+      ]);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'ไม่สามารถโหลดข้อมูลได้';
       setError(message);
       console.error('Fetch error:', err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -135,7 +141,7 @@ export default function HomePage() {
     // Clear both caches before refresh
     fetchCache.clear('/api/public/summary');
     fetchCache.clear('/api/public/dashboard');
-    await fetchData();
+    await fetchData(true);
     setIsRefreshing(false);
   };
 
@@ -152,11 +158,6 @@ export default function HomePage() {
 
       setHeatmapData(data.heatmap);
       setHolidays(data.holidays);
-      // Update summary only if it's current month
-      const now = new Date();
-      if (year === now.getFullYear() && month === now.getMonth() + 1) {
-        setSummary(data.summary);
-      }
     } catch (err) {
       console.error('Failed to fetch heatmap:', err);
     }
@@ -178,62 +179,26 @@ export default function HomePage() {
     setSelectedDayLeaves([]);
   };
 
-  // Pull to refresh handlers
-  const handleTouchStart = (e: React.TouchEvent) => {
-    // Only allow pull when at the very top of the page
-    if (window.scrollY === 0) {
-      setPullStartY(e.touches[0].clientY);
-      setPullStartX(e.touches[0].clientX);
-    }
-  };
+  const { pull, state: pullState, threshold: pullThreshold } = usePullToRefresh(handleRefresh, {
+    enabled: !selectedDate,
+  });
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!pullStartY) return;
+  const heatmapCounts = useMemo(
+    () => Object.fromEntries(heatmapData.map((day) => [day.date, day.count])),
+    [heatmapData]
+  );
 
-    // Cancel pull if user has scrolled down
-    if (window.scrollY > 0) {
-      setPullStartY(0);
-      setPullStartX(0);
-      setPullDistance(0);
-      setIsPulling(false);
-      return;
-    }
-
-    const currentY = e.touches[0].clientY;
-    const currentX = e.touches[0].clientX;
-    const deltaY = currentY - pullStartY;
-    const deltaX = Math.abs(currentX - pullStartX);
-
-    // Detect if this is a vertical pull (not horizontal swipe)
-    // Only activate pull-to-refresh if vertical movement > horizontal movement
-    if (deltaY > 0 && deltaY > deltaX * 1.5) {
-      if (!isPulling && deltaY > 10) {
-        setIsPulling(true);
-      }
-
-      // Only allow downward pull up to 150px
-      if (deltaY < 2000) {
-        setPullDistance(deltaY);
-        // Only prevent default when actively pulling
-        if (isPulling) {
-          e.preventDefault();
-        }
-      }
-    }
-  };
-
-  const handleTouchEnd = async () => {
-    if (pullDistance > 140) {
-      setIsRefreshing(true);
-      await fetchData();
-      setIsRefreshing(false);
-    }
-
-    setIsPulling(false);
-    setPullStartY(0);
-    setPullStartX(0);
-    setPullDistance(0);
-  };
+  const todayTeachers = useMemo(
+    () =>
+      summary?.leavesByType.flatMap((group) =>
+        group.teachers.map((teacher) => ({
+          ...teacher,
+          type: group.type,
+          customTypeName: group.customTypeName,
+        }))
+      ) ?? [],
+    [summary]
+  );
 
   if (error) {
     return (
@@ -241,7 +206,7 @@ export default function HomePage() {
         <div className="text-center">
           <p className="text-slate-600 dark:text-slate-400 mb-4">{error}</p>
           <button
-            onClick={fetchData}
+            onClick={() => fetchData()}
             className="px-6 py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-medium transition-colors"
           >
             ลองใหม่
@@ -254,36 +219,9 @@ export default function HomePage() {
   const currentDate = summary ? new Date(summary.date) : new Date();
 
   return (
-    <div
-      ref={containerRef}
-      className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
-      {/* Pull to refresh indicator */}
-      <AnimatePresence>
-        {isPulling && pullDistance > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-4"
-            style={{ transform: `translateY(${Math.min(pullDistance - 40, 40)}px)` }}
-          >
-            <div className="bg-white dark:bg-slate-800 rounded-full p-2 shadow-lg shadow-slate-300/50 dark:shadow-slate-950/80">
-              <RefreshCw
-                className={`w-5 h-5 transition-colors ${
-                  pullDistance > 140
-                    ? 'text-emerald-600 dark:text-emerald-400 animate-spin'
-                    : 'text-sky-600 dark:text-sky-400'
-                }`}
-                style={{ transform: pullDistance > 140 ? 'none' : `rotate(${pullDistance * 2}deg)` }}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <MotionConfig reducedMotion="user">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24">
+      <PullToRefreshIndicator pull={pull} state={pullState} threshold={pullThreshold} />
       {/* Header */}
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-4xl mx-auto px-4 py-4">
@@ -332,13 +270,16 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-3 space-y-section">
+      <motion.main
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="max-w-4xl mx-auto px-4 py-3 space-y-section"
+      >
         {/* Holiday banner */}
         {summary?.todayHoliday && (
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            variants={item}
             className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl p-5 text-white text-center shadow-lg shadow-amber-500/20"
           >
             <Calendar className="w-7 h-7 mx-auto mb-1.5" />
@@ -351,10 +292,8 @@ export default function HomePage() {
         <div className="grid grid-cols-1 xs:grid-cols-3 gap-2">
           {/* Attending - full width on mobile */}
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-md shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-200 dark:border-slate-800 xs:col-span-1 hover:shadow-lg hover:shadow-emerald-200/30 dark:hover:shadow-emerald-950/30 hover:border-emerald-300 dark:hover:border-emerald-700 hover:-translate-y-0.5 transition-all cursor-default"
+            variants={item}
+            className="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-md shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-200 dark:border-slate-800 xs:col-span-1"
           >
             <div className="flex items-center gap-2 mb-3">
               <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
@@ -364,13 +303,9 @@ export default function HomePage() {
                 มาปฏิบัติงาน
               </h3>
             </div>
-            {loading || !summary ? (
-              <div className="h-8 flex items-center">
-                <RefreshCw className="w-5 h-5 text-emerald-500 dark:text-emerald-400 animate-spin" />
-              </div>
-            ) : (
+            {!summary ? (<div className="h-6 w-16 rounded-md bg-slate-200 dark:bg-slate-800 animate-pulse" aria-hidden />) : (
               <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 leading-none tabular-nums">
-                <CountUp end={summary.attendingToday} duration={1.5} /> <span className="text-body-sm text-tertiary font-normal ml-1">คน</span>
+                <CountUp end={summary.attendingToday} duration={600} /><span className="text-body-sm text-tertiary font-normal ml-1">/ {summary.totalTeachers} คน</span>
               </p>
             )}
           </motion.div>
@@ -379,10 +314,8 @@ export default function HomePage() {
           <div className="grid grid-cols-2 xs:contents gap-2">
             {/* Leaves today */}
             <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-md shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-200 dark:border-slate-800 hover:shadow-lg hover:shadow-sky-200/30 dark:hover:shadow-sky-950/30 hover:border-sky-300 dark:hover:border-sky-700 hover:-translate-y-0.5 transition-all cursor-default"
+              variants={item}
+              className="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-md shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-200 dark:border-slate-800"
             >
               <div className="flex items-center gap-2 mb-3">
                 <div className="p-1.5 bg-sky-100 dark:bg-sky-900/30 rounded-lg">
@@ -392,23 +325,17 @@ export default function HomePage() {
                   ลาวันนี้
                 </h3>
               </div>
-              {loading || !summary ? (
-                <div className="h-8 flex items-center">
-                  <RefreshCw className="w-5 h-5 text-sky-500 dark:text-sky-400 animate-spin" />
-                </div>
-              ) : (
+              {!summary ? (<div className="h-6 w-16 rounded-md bg-slate-200 dark:bg-slate-800 animate-pulse" aria-hidden />) : (
                 <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 leading-none tabular-nums">
-                  <CountUp end={summary.leavesToday} duration={1.5} /> <span className="text-body-sm text-tertiary font-normal ml-1">คน</span>
+                  <CountUp end={summary.leavesToday} duration={600} /> <span className="text-body-sm text-tertiary font-normal ml-1">คน</span>
                 </p>
               )}
             </motion.div>
 
             {/* Leaves tomorrow */}
             <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-md shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-200 dark:border-slate-800 hover:shadow-lg hover:shadow-amber-200/30 dark:hover:shadow-amber-950/30 hover:border-amber-300 dark:hover:border-amber-700 hover:-translate-y-0.5 transition-all cursor-default"
+              variants={item}
+              className="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-md shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-200 dark:border-slate-800"
             >
               <div className="flex items-center gap-2 mb-3">
                 <div className="p-1.5 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
@@ -418,17 +345,13 @@ export default function HomePage() {
                   ลาพรุ่งนี้
                 </h3>
               </div>
-              {loading || !summary ? (
-                <div className="h-8 flex items-center">
-                  <RefreshCw className="w-5 h-5 text-amber-500 dark:text-amber-400 animate-spin" />
-                </div>
-              ) : summary.tomorrowHoliday ? (
+              {!summary ? (<div className="h-6 w-16 rounded-md bg-slate-200 dark:bg-slate-800 animate-pulse" aria-hidden />) : summary.tomorrowHoliday ? (
                 <p className="text-label text-secondary leading-snug">
                   พรุ่งนี้เป็นวันหยุด
                 </p>
               ) : (
                 <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 leading-none tabular-nums">
-                  <CountUp end={summary.leavesTomorrow} duration={1.5} /> <span className="text-body-sm text-tertiary font-normal ml-1">คน</span>
+                  <CountUp end={summary.leavesTomorrow} duration={600} /> <span className="text-body-sm text-tertiary font-normal ml-1">คน</span>
                 </p>
               )}
             </motion.div>
@@ -436,74 +359,79 @@ export default function HomePage() {
         </div>
 
         {/* Leave list */}
-        {loading || !summary ? null : summary.leavesByType.length > 0 ? (
+        {!summary ? (
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            variants={item}
+            aria-hidden
+            className="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-md shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-200 dark:border-slate-800"
+          >
+            <div className="h-5 w-40 rounded-md bg-slate-200 dark:bg-slate-800 animate-pulse mb-3" />
+            <div className="space-y-2">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="h-9 rounded-lg bg-slate-100 dark:bg-slate-800/60 animate-pulse" />
+              ))}
+            </div>
+          </motion.div>
+        ) : summary.leavesByType.length > 0 ? (
+          <motion.div
+            variants={item}
             className="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-md shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-200 dark:border-slate-800"
           >
             <h2 className="text-heading-sm mb-3">
               รายชื่อครูที่ลาวันนี้
             </h2>
-            <div className="space-y-2">
-              {summary.leavesByType.map((group, idx) => (
-                <div key={idx}>
-                  {group.teachers.map((teacher, tIdx) => {
-                    const leaveType = group.type as LeaveType;
-                    const displayType = leaveType === 'other' ? 'อื่นๆ' : LEAVE_TYPE_LABELS[leaveType];
-                    const typeColors = LEAVE_TYPE_COLORS[leaveType] || LEAVE_TYPE_COLORS['other'];
+            <motion.div variants={listContainer} className="space-y-1">
+              <AnimatePresence>
+                {todayTeachers.map((teacher) => {
+                  const leaveType = teacher.type as LeaveType;
+                  const typeColors = LEAVE_TYPE_COLORS[leaveType] ?? LEAVE_TYPE_COLORS.other;
+                  const typeLabel =
+                    leaveType === 'other' && teacher.customTypeName
+                      ? teacher.customTypeName
+                      : LEAVE_TYPE_LABELS[leaveType] ?? LEAVE_TYPE_LABELS.other;
 
-                    // Calculate global index for stagger delay
-                    const globalIdx = summary.leavesByType
-                      .slice(0, idx)
-                      .reduce((acc, g) => acc + g.teachers.length, 0) + tIdx;
-
-                    return (
-                      <motion.div
-                        key={teacher.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.3, delay: globalIdx * 0.04, ease: [0.16, 1, 0.3, 1] }}
-                        className="flex items-center gap-2 py-2 min-w-0 rounded-lg px-2 -mx-2 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-default"
-                      >
-                        <span className="text-muted flex-shrink-0">–</span>
-                        <span className="font-medium text-body-sm truncate">
-                          {teacher.firstName} {teacher.lastName}
+                  return (
+                    <motion.div
+                      key={teacher.id}
+                      layout="position"
+                      variants={row}
+                      exit="exit"
+                      className="flex items-center gap-2 min-w-0 rounded-lg px-2 -mx-2 py-2 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-default"
+                    >
+                      <span className="text-muted flex-shrink-0" aria-hidden>–</span>
+                      <span className="min-w-0 truncate font-medium text-body-sm">
+                        {teacher.firstName} {teacher.lastName}
+                      </span>
+                      {teacher.department && (
+                        <span className="text-caption text-secondary flex-shrink-0">
+                          ({teacher.department})
                         </span>
-                        {teacher.department && (
-                          <span className="text-caption text-secondary flex-shrink-0">
-                            ({teacher.department})
-                          </span>
-                        )}
-                        <span className={`px-1.5 py-0.5 text-caption rounded border flex-shrink-0 ${typeColors.light} ${typeColors.dark}`}>
-                          {displayType}
+                      )}
+                      <span className={`px-1.5 py-0.5 text-caption rounded border flex-shrink-0 ${typeColors.light} ${typeColors.dark}`}>
+                        {typeLabel}
+                      </span>
+                      {teacher.isHalfDay && teacher.halfDayPeriod && (
+                        <span className="px-1.5 py-0.5 text-caption bg-slate-100 dark:bg-slate-800 text-secondary rounded flex-shrink-0">
+                          {HALF_DAY_PERIOD_LABELS[teacher.halfDayPeriod]}
                         </span>
-                        <LeaveStatusIcon status={teacher.status} />
-                        {teacher.isHalfDay && teacher.halfDayPeriod && (
-                          <span className="px-1.5 py-0.5 text-caption bg-slate-100 dark:bg-slate-800 text-secondary rounded flex-shrink-0">
-                            {HALF_DAY_PERIOD_LABELS[teacher.halfDayPeriod]}
-                          </span>
-                        )}
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
+                      )}
+                      <LeaveStatusIcon status={teacher.status} />
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </motion.div>
           </motion.div>
         ) : (
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            variants={item}
             className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/30 dark:to-blue-950/30 rounded-xl p-8 text-center border border-sky-100 dark:border-sky-900/50 shadow-lg shadow-sky-100/50 dark:shadow-sky-950/50"
           >
             <div className="w-16 h-16 mx-auto mb-4 bg-sky-100 dark:bg-sky-900/50 rounded-full flex items-center justify-center">
               <Calendar className="w-8 h-8 text-sky-600 dark:text-sky-400" />
             </div>
             <h3 className="text-heading-md mb-2">
-              ไม่มีครูลาวันนี้ 🎉
+              ไม่มีครูลาวันนี้
             </h3>
             <p className="text-body-sm text-secondary">
               ทุกคนมาปฏิบัติงานครบ
@@ -513,16 +441,14 @@ export default function HomePage() {
 
         {/* Heatmap Calendar */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          variants={item}
           className="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-md shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-200 dark:border-slate-800"
         >
           <h2 className="text-heading-sm mb-3">
             ปฏิทินการลารายเดือน
           </h2>
           <HeatmapCalendar
-            data={heatmapData.reduce((acc, day) => ({ ...acc, [day.date]: day.count }), {})}
+            data={heatmapCounts}
             currentDate={currentHeatmapDate}
             clickable={true}
             onMonthChange={handleHeatmapMonthChange}
@@ -535,30 +461,11 @@ export default function HomePage() {
         {/* Modal for day details */}
         <AnimatePresence>
           {selectedDate && (
-            <div
-              className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
-              onClick={closeModal}
+            <BottomSheet
+              key={selectedDate}
+              title={formatFullThaiDate(new Date(selectedDate))}
+              onClose={closeModal}
             >
-              <motion.div
-                initial={{ opacity: 0, y: 50, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 50, scale: 0.95 }}
-                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                onClick={(e) => e.stopPropagation()}
-                className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-2xl shadow-slate-300/50 dark:shadow-slate-950/90 border border-slate-200 dark:border-slate-800 w-full max-w-md max-h-[80vh] overflow-y-auto"
-              >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-heading-md">
-                  {formatFullThaiDate(new Date(selectedDate))}
-                </h3>
-                <button
-                  onClick={closeModal}
-                  className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                  <span className="text-slate-500 text-xl">×</span>
-                </button>
-              </div>
-
               {selectedDayLeaves.length === 0 ? (
                 <div className="text-center py-8 text-slate-500">
                   ไม่มีครูลาวันนี้
@@ -607,22 +514,54 @@ export default function HomePage() {
                   </div>
                 </>
               )}
-              </motion.div>
-            </div>
+            </BottomSheet>
           )}
         </AnimatePresence>
-      </main>
+      </motion.main>
 
       {/* CTA buttons */}
-      <div className="fixed bottom-0 left-0 right-0 p-3 pb-safe bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-t border-slate-200 dark:border-slate-800 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_12px_rgba(0,0,0,0.3)]">
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        transition={{ type: 'spring', stiffness: 260, damping: 22, delay: 0.3 }}
+        className="fixed bottom-0 left-0 right-0 p-3 pb-safe bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-t border-slate-200 dark:border-slate-800 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_12px_rgba(0,0,0,0.3)]"
+      >
         <div className="max-w-4xl mx-auto flex gap-2">
-          <Link
-            href="/verify"
-            prefetch={false}
-            className="flex-1 py-3.5 bg-orange-500 hover:bg-orange-600 text-white text-center font-semibold rounded-lg shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-all active:scale-[0.98]"
+          <motion.div
+            className="flex-1"
+            initial="rest"
+            whileHover="hover"
+            whileTap="tap"
+            variants={{
+              rest: { y: 0, scale: 1 },
+              hover: { y: -2, scale: 1.02 },
+              tap: { y: 0, scale: 0.96 },
+            }}
+            transition={{ type: 'spring', stiffness: 400, damping: 17 }}
           >
-            ยื่นใบลา
-          </Link>
+            <Link
+              href="/verify"
+              prefetch={false}
+              className="relative flex items-center justify-center gap-2 overflow-hidden py-3.5 bg-orange-500 hover:bg-orange-600 text-white text-center font-semibold rounded-lg shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-[background-color,box-shadow]"
+            >
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-y-0 left-0 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-[150%] motion-safe:animate-sheen"
+              />
+              <span className="relative">ยื่นใบลา</span>
+              <motion.span
+                aria-hidden="true"
+                className="relative inline-flex"
+                variants={{
+                  rest: { x: 0, y: 0 },
+                  hover: { x: 3, y: -3 },
+                  tap: { x: 14, y: -14, opacity: 0.6 },
+                }}
+              >
+                <Rocket className="w-5 h-5" />
+              </motion.span>
+            </Link>
+          </motion.div>
           <Link
             href="/hr/login"
             prefetch={false}
@@ -631,7 +570,8 @@ export default function HomePage() {
             เจ้าหน้าที่
           </Link>
         </div>
-      </div>
+      </motion.div>
     </div>
+    </MotionConfig>
   );
 }

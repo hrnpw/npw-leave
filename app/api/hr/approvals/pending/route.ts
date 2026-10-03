@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const skip = (page - 1) * limit;
 
-    const [leaves, total] = await Promise.all([
+    const [leaves, total, settings] = await Promise.all([
       prisma.leave.findMany({
         where: {
           status: 'reviewed',
@@ -79,6 +79,9 @@ export async function GET(request: NextRequest) {
           status: 'reviewed',
         },
       }),
+      prisma.settings.findUnique({
+        where: { id: 'singleton' },
+      }),
     ]);
 
     // Early return if no leaves to process
@@ -93,11 +96,6 @@ export async function GET(request: NextRequest) {
         },
       });
     }
-
-    // Get settings for quota checking
-    const settings = await prisma.settings.findUnique({
-      where: { id: 'singleton' },
-    });
 
     const quotas = {
       sickPersonal: settings?.quotaSickPersonal || 23,

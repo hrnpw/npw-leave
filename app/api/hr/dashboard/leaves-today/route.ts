@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getHrSession } from '@/lib/getSession';
 import { prisma } from '@/lib/prisma';
-import { startOfDay, endOfDay } from 'date-fns';
 
 export async function GET() {
   try {
@@ -14,9 +13,13 @@ export async function GET() {
       );
     }
 
-    const now = new Date();
-    const todayStart = startOfDay(now);
-    const todayEnd = endOfDay(now);
+    // Thailand date, same convention as /api/hr/dashboard/all (date columns are @db.Date)
+    const nowThailand = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+    const y = nowThailand.getFullYear();
+    const m = nowThailand.getMonth();
+    const d = nowThailand.getDate();
+    const todayStart = new Date(Date.UTC(y, m, d, 0, 0, 0, 0));
+    const todayEnd = new Date(Date.UTC(y, m, d, 23, 59, 59, 999));
 
     // Get all leaves today with full teacher info
     const leaves = await prisma.leave.findMany({

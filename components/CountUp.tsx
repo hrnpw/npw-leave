@@ -1,42 +1,43 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 
 interface CountUpProps {
   end: number;
+  /** milliseconds */
   duration?: number;
   suffix?: string;
 }
 
 export function CountUp({ end, duration = 1000, suffix = '' }: CountUpProps) {
+  const reduceMotion = useReducedMotion();
   const [count, setCount] = useState(0);
+  const fromRef = useRef(0);
 
   useEffect(() => {
-    let startTime: number;
-    let animationFrame: number;
+    if (reduceMotion) {
+      fromRef.current = end;
+      return;
+    }
 
-    const animate = (currentTime: number) => {
-      if (!startTime) startTime = currentTime;
-      const progress = Math.min((currentTime - startTime) / duration, 1);
+    const from = fromRef.current;
+    let startTime: number | undefined;
+    let frame: number;
 
-      // Easing function (ease-out)
-      const easeOut = 1 - Math.pow(1 - progress, 3);
-      setCount(Math.floor(easeOut * end));
-
-      if (progress < 1) {
-        animationFrame = requestAnimationFrame(animate);
-      }
+    const tick = (now: number) => {
+      startTime ??= now;
+      const progress = Math.min((now - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const value = Math.round(from + (end - from) * eased);
+      fromRef.current = value;
+      setCount(value);
+      if (progress < 1) frame = requestAnimationFrame(tick);
     };
 
-    animationFrame = requestAnimationFrame(animate);
-
-    return () => {
-      if (animationFrame) {
-        cancelAnimationFrame(animationFrame);
-      }
-    };
-  }, [end, duration]);
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [end, duration, reduceMotion]);
 
   return (
     <motion.span
@@ -44,7 +45,7 @@ export function CountUp({ end, duration = 1000, suffix = '' }: CountUpProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      {count}
+      {reduceMotion ? end : count}
       {suffix}
     </motion.span>
   );

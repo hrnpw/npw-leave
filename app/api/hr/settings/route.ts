@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getHrSession } from '@/lib/getSession';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog } from '@/lib/audit/logger';
-import { shortCacheHeaders } from '@/lib/cacheHeaders';
+import { noCacheHeaders } from '@/lib/cacheHeaders';
 
 // GET /api/hr/settings - ดึงการตั้งค่าทั้งหมด
 export async function GET(req: NextRequest) {
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     };
 
     return NextResponse.json(response, {
-      headers: shortCacheHeaders,
+      headers: noCacheHeaders,
     });
   } catch (error) {
     console.error('GET /api/hr/settings error:', error);

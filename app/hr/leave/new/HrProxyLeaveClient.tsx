@@ -19,6 +19,7 @@ import { LEAVE_TYPE_LABELS } from '@/types/leave';
 import LeaveTypeStep from '@/app/teacher/leave/new/steps/LeaveTypeStep';
 import DateRangeStep from '@/app/teacher/leave/new/steps/DateRangeStep';
 import DetailsStep from '@/app/teacher/leave/new/steps/DetailsStep';
+import { stepVariants } from '@/app/teacher/leave/new/steps/stepTransition';
 import HrLayoutWrapper from '@/components/hr/HrLayoutWrapper';
 import type { HrRole } from '@/lib/roles';
 
@@ -65,8 +66,15 @@ const PROXY_REASONS = [
 
 export default function HrProxyLeaveClient({ hrUser }: HrProxyLeaveClientProps) {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStepRaw] = useState(0);
+  const [direction, setDirection] = useState(1);
+  const [hasOverlap, setHasOverlap] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const setCurrentStep = (step: number) => {
+    setDirection(step >= currentStep ? 1 : -1);
+    setCurrentStepRaw(step);
+  };
 
   // Step 0: Teacher selection
   const [searchQuery, setSearchQuery] = useState('');
@@ -187,11 +195,11 @@ export default function HrProxyLeaveClient({ hrUser }: HrProxyLeaveClientProps) 
   };
 
   const canProceedStep1 = () => {
-    return formData.type !== null;
+    return formData.type !== null && (formData.type !== 'other' || formData.customTypeName.trim().length > 0);
   };
 
   const canProceedStep2 = () => {
-    return formData.startDate !== null && formData.endDate !== null;
+    return formData.startDate !== null && formData.endDate !== null && !hasOverlap;
   };
 
   const canProceedStep3 = () => {
@@ -257,6 +265,24 @@ export default function HrProxyLeaveClient({ hrUser }: HrProxyLeaveClientProps) 
 
       if (!res.ok) {
         throw new Error(data.error || 'เกิดข้อผิดพลาด');
+      }
+
+      let failedUploads = 0;
+      for (const file of formData.files) {
+        try {
+          const fd = new FormData();
+          fd.append('file', file);
+          const uploadRes = await fetch(`/api/hr/leaves/${data.leave.id}/attachments`, {
+            method: 'POST',
+            body: fd,
+          });
+          if (!uploadRes.ok) failedUploads++;
+        } catch {
+          failedUploads++;
+        }
+      }
+      if (failedUploads > 0) {
+        toast.warning(`แนบไฟล์ไม่สำเร็จ ${failedUploads} ไฟล์ กรุณาแนบใหม่จากหน้ารายละเอียดใบลา`);
       }
 
       toast.success('ยื่นใบลาแทนครูสำเร็จ');
@@ -344,14 +370,16 @@ export default function HrProxyLeaveClient({ hrUser }: HrProxyLeaveClientProps) 
           </div>
         )}
 
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="wait" custom={direction}>
           {/* Step 0: Teacher Selection */}
           {currentStep === 0 && (
             <motion.div
               key="step0"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
+              custom={direction}
+              variants={stepVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
               className="space-y-4"
             >
               {/* Search and Table - Hidden when teacher is selected */}
@@ -576,6 +604,7 @@ export default function HrProxyLeaveClient({ hrUser }: HrProxyLeaveClientProps) 
                 setFormData({ ...formData, ...updates, halfDayPeriod: updates.halfDayPeriod || formData.halfDayPeriod });
               }}
               onNext={() => setCurrentStep(2)}
+              direction={direction}
             />
           )}
 
@@ -586,8 +615,11 @@ export default function HrProxyLeaveClient({ hrUser }: HrProxyLeaveClientProps) 
               updateFormData={(updates) => {
                 setFormData({ ...formData, ...updates, halfDayPeriod: updates.halfDayPeriod || formData.halfDayPeriod });
               }}
-              onNext={() => setCurrentStep(3)}
+              onNext={() => canProceedStep2() && setCurrentStep(3)}
               isProxyMode={true}
+              direction={direction}
+              teacherId={selectedTeacher?.id}
+              onOverlapChange={setHasOverlap}
             />
           )}
 
@@ -595,9 +627,11 @@ export default function HrProxyLeaveClient({ hrUser }: HrProxyLeaveClientProps) 
           {currentStep === 3 && selectedTeacher && (
             <motion.div
               key="step3"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
+              custom={direction}
+              variants={stepVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
               className="space-y-4"
             >
               <DetailsStep
@@ -609,6 +643,7 @@ export default function HrProxyLeaveClient({ hrUser }: HrProxyLeaveClientProps) 
                 submitting={submitting}
                 requireSignature={false}
                 isHrMode={true}
+                direction={direction}
               />
 
               {/* HR Note */}

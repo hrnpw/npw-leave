@@ -40,13 +40,19 @@ export default function HrLayoutWrapper({ children, hrUser }: HrLayoutWrapperPro
       }
     };
 
+    const fetchWhenVisible = () => {
+      if (document.visibilityState === 'visible') fetchCounts();
+    };
+
     fetchCounts();
-    const interval = setInterval(fetchCounts, 60000);
+    const interval = setInterval(fetchWhenVisible, 60000);
     window.addEventListener(PENDING_COUNT_CHANGED_EVENT, fetchCounts);
+    document.addEventListener('visibilitychange', fetchWhenVisible);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener(PENDING_COUNT_CHANGED_EVENT, fetchCounts);
+      document.removeEventListener('visibilitychange', fetchWhenVisible);
     };
   }, []);
 

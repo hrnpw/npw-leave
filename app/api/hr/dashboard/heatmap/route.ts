@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getHrSession } from '@/lib/getSession';
 import { prisma } from '@/lib/prisma';
 import { startOfMonth, endOfMonth, eachDayOfInterval, format } from 'date-fns';
-import { shortCacheHeaders } from '@/lib/cacheHeaders';
+import { privateShortCacheHeaders } from '@/lib/cacheHeaders';
 
 export async function GET(request: Request) {
   try {
@@ -36,9 +36,17 @@ export async function GET(request: Request) {
         date: { gte: monthStart, lte: monthEnd },
         leave: { status: { in: ['reviewed', 'approved'] } },
       },
-      include: {
+      select: {
+        date: true,
+        isHalfDay: true,
+        halfDayPeriod: true,
         leave: {
-          include: {
+          select: {
+            id: true,
+            leaveNo: true,
+            type: true,
+            customTypeName: true,
+            status: true,
             teacher: {
               select: {
                 id: true,
@@ -103,7 +111,7 @@ export async function GET(request: Request) {
       month: month + 1,
       heatmap: heatmapData,
     }, {
-      headers: shortCacheHeaders,
+      headers: privateShortCacheHeaders,
     });
   } catch (error) {
     console.error('Heatmap error:', error);

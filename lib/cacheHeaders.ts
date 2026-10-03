@@ -20,6 +20,14 @@ export const shortCacheHeaders = {
 };
 
 /**
+ * Short cache เฉพาะ browser (30 seconds) - สำหรับข้อมูลที่ต้องล็อกอินก่อนถึงจะดูได้
+ * ห้ามใช้ public เพราะ CDN จะเสิร์ฟให้คนที่ไม่ได้ล็อกอินได้
+ */
+export const privateShortCacheHeaders = {
+  'Cache-Control': 'private, max-age=30',
+};
+
+/**
  * Medium cache (5 minutes) - สำหรับข้อมูลที่เปลี่ยนแปลงปานกลาง
  * เช่น teacher list, leave history
  */

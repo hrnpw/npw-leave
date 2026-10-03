@@ -1,29 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTeacherSession } from '@/lib/getSession';
+import { getHrSession } from '@/lib/getSession';
 import { findOverlappingLeaves } from '@/lib/leaveOverlap';
 
-/**
- * Check if leave dates overlap with existing leaves.
- * Called from the date step (early warning) and again right before submit.
- */
 export async function POST(request: NextRequest) {
   try {
-    const session = await getTeacherSession();
+    const session = await getHrSession();
     if (!session.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { startDate, endDate, excludeLeaveId } = await request.json();
+    const { teacherId, startDate, endDate } = await request.json();
 
-    if (!startDate || !endDate) {
-      return NextResponse.json({ error: 'Missing dates' }, { status: 400 });
+    if (!teacherId || !startDate || !endDate) {
+      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
     }
 
     const conflicts = await findOverlappingLeaves({
-      teacherId: session.id,
+      teacherId,
       startDate,
       endDate,
-      excludeLeaveId,
     });
 
     return NextResponse.json({
@@ -40,7 +35,7 @@ export async function POST(request: NextRequest) {
       })),
     });
   } catch (error) {
-    console.error('Check overlap error:', error);
+    console.error('HR check overlap error:', error);
     return NextResponse.json(
       { error: 'เกิดข้อผิดพลาดในการตรวจสอบ' },
       { status: 500 }

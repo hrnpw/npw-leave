@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { startOfMonth, endOfMonth, eachDayOfInterval, format, isSameMonth, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
 import { th } from 'date-fns/locale';
@@ -18,6 +18,12 @@ interface HeatmapCalendarProps {
   holidays?: Array<{ date: string; name: string }>; // วันหยุดราชการ
 }
 
+const monthSlide: Variants = {
+  enter: (direction: number) => ({ opacity: 0, x: direction * 24 }),
+  center: { opacity: 1, x: 0, transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] } },
+  exit: (direction: number) => ({ opacity: 0, x: direction * -24, transition: { duration: 0.12 } }),
+};
+
 export function HeatmapCalendar({
   data = {},
   currentDate,
@@ -29,6 +35,7 @@ export function HeatmapCalendar({
   holidays = []
 }: HeatmapCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(currentDate || new Date());
+  const [direction, setDirection] = useState(1);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -50,12 +57,14 @@ export function HeatmapCalendar({
 
   const handlePrevMonth = () => {
     const newMonth = subMonths(currentMonth, 1);
+    setDirection(-1);
     setCurrentMonth(newMonth);
     onMonthChange?.(newMonth);
   };
 
   const handleNextMonth = () => {
     const newMonth = addMonths(currentMonth, 1);
+    setDirection(1);
     setCurrentMonth(newMonth);
     onMonthChange?.(newMonth);
   };
@@ -100,8 +109,17 @@ export function HeatmapCalendar({
       </div>
 
       {/* Calendar grid */}
-      <div className="grid grid-cols-7 gap-1.5">
-        {calendarDays.map((day, idx) => {
+      <AnimatePresence mode="wait" initial={false} custom={direction}>
+      <motion.div
+        key={format(monthStart, 'yyyy-MM')}
+        custom={direction}
+        variants={monthSlide}
+        initial="enter"
+        animate="center"
+        exit="exit"
+        className="grid grid-cols-7 gap-1.5"
+      >
+        {calendarDays.map((day) => {
           const dateKey = format(day, 'yyyy-MM-dd');
           const count = data[dateKey] || 0;
           const isCurrentMonth = isSameMonth(day, currentMonth);
@@ -111,13 +129,7 @@ export function HeatmapCalendar({
           const isHoliday = !!holidayName;
 
           return (
-            <motion.div
-              key={dateKey}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: idx * 0.01 }}
-              className="relative group"
-            >
+            <div key={dateKey} className="relative group">
               <button
                 onClick={() => clickable && isCurrentMonth && count > 0 && onDayClick?.(dateKey)}
                 onMouseEnter={() => clickable && isCurrentMonth && count > 0 && onDayHover?.(dateKey)}
@@ -177,10 +189,11 @@ export function HeatmapCalendar({
                   </div>
                 </div>
               )}
-            </motion.div>
+            </div>
           );
         })}
-      </div>
+      </motion.div>
+      </AnimatePresence>
 
       {/* Legend */}
       <div className="flex items-center justify-center gap-2 mt-4 text-xs text-slate-600 dark:text-slate-400">

@@ -20,9 +20,13 @@ class FetchCache {
    */
   async fetch<T = any>(
     url: string,
-    options?: RequestInit & { cacheDuration?: number }
+    options?: RequestInit & { cacheDuration?: number; cacheBust?: boolean }
   ): Promise<T> {
     const cacheKey = `${url}_${JSON.stringify(options?.body || '')}`;
+    // Adds a unique query param so the CDN/browser cache is skipped, while the in-memory key stays the same
+    const requestUrl = options?.cacheBust
+      ? `${url}${url.includes('?') ? '&' : '?'}_t=${Date.now()}`
+      : url;
     const cacheDuration = options?.cacheDuration || 30000; // 30 seconds default
 
     // Check if there's a pending request for this URL
@@ -38,7 +42,7 @@ class FetchCache {
     }
 
     // Create new request
-    const requestPromise = fetch(url, options)
+    const requestPromise = fetch(requestUrl, options)
       .then(async (response) => {
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);

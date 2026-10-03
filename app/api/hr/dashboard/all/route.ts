@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getHrSession } from '@/lib/getSession';
 import { prisma } from '@/lib/prisma';
+import { noCacheHeaders } from '@/lib/cacheHeaders';
 
 export const dynamic = 'force-dynamic'; // Uses cookies for auth
 
@@ -31,11 +32,8 @@ export async function GET(request: Request) {
     // Execute only essential queries in parallel (removed heatmap - it's lazy loaded separately)
     const [
       totalTeachers,
-      leavesTodayFull,
-      leavesTodayAll,
       leavesTomorrow,
-      pendingCount,
-      reviewedCount,
+      queueCounts,
       settings,
       leavesToday,
     ] = await Promise.all([
@@ -46,30 +44,14 @@ export async function GET(request: Request) {
       prisma.leave.count({
         where: {
           status: { in: ['reviewed', 'approved'] },
-          startDate: { lte: todayEnd },
-          endDate: { gte: todayStart },
-          isHalfDay: false,
-        },
-      }),
-      prisma.leave.count({
-        where: {
-          status: { in: ['reviewed', 'approved'] },
-          startDate: { lte: todayEnd },
-          endDate: { gte: todayStart },
-        },
-      }),
-      prisma.leave.count({
-        where: {
-          status: { in: ['reviewed', 'approved'] },
           startDate: { lte: tomorrowEnd },
           endDate: { gte: tomorrowStart },
         },
       }),
-      prisma.leave.count({
-        where: { status: 'pending' },
-      }),
-      prisma.leave.count({
-        where: { status: 'reviewed' },
+      prisma.leave.groupBy({
+        by: ['status'],
+        where: { status: { in: ['pending', 'reviewed'] } },
+        _count: { _all: true },
       }),
       prisma.settings.findUnique({
         where: { id: 'singleton' },
@@ -133,13 +115,16 @@ export async function GET(request: Request) {
     `;
 
     const exceedingCount = Number(exceedingTeachers[0]?.count || 0);
+    const pendingCount = queueCounts.find((c) => c.status === 'pending')?._count._all ?? 0;
+    const reviewedCount = queueCounts.find((c) => c.status === 'reviewed')?._count._all ?? 0;
+    const leavesTodayFull = leavesToday.filter((leave) => !leave.isHalfDay).length;
     const attendingToday = totalTeachers - leavesTodayFull;
 
     // Format summary
     const summary = {
       totalTeachers,
       attendingToday,
-      leavesToday: leavesTodayAll,
+      leavesToday: leavesToday.length,
       leavesTomorrow,
       pendingCount,
       reviewedCount,
@@ -175,11 +160,7 @@ export async function GET(request: Request) {
         summary,
         leavesToday: leavesTodayFormatted,
       },
-      {
-        headers: {
-          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
-        },
-      }
+      { headers: noCacheHeaders }
     );
   } catch (error) {
     console.error('HR dashboard all error:', error);

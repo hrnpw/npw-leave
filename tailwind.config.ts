@@ -115,12 +115,17 @@ const config: Config = {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.5' },
         },
+        'sheen': {
+          '0%': { transform: 'translateX(-150%) skewX(-12deg)' },
+          '35%, 100%': { transform: 'translateX(450%) skewX(-12deg)' },
+        },
       },
       animation: {
         'slide-up': 'slide-up 0.3s ease-out',
         'fade-in': 'fade-in 0.2s ease-out',
         'shimmer': 'shimmer 2s ease-in-out infinite',
         'pulse-fast': 'pulse-fast 0.8s ease-in-out infinite',
+        'sheen': 'sheen 4s ease-in-out 1s infinite',
       },
     },
   },

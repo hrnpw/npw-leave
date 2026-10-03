@@ -2,8 +2,8 @@
 
 import { useState, useEffect, lazy, Suspense, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, Plus, History, LogOut, Clock, TrendingUp, Calendar, Home, PlusCircle, Sparkles, RefreshCw, Bell } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { FileText, Plus, History, LogOut, Clock, TrendingUp, Calendar, Home, PlusCircle, Sparkles, Bell } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { SessionWarning } from '@/components/SessionWarning';
 import { PushNotificationToggle } from '@/components/PushNotificationToggle';
@@ -11,9 +11,13 @@ import { CountUp } from '@/components/CountUp';
 import { getThaiGreeting, formatFullThaiDate, formatThaiDateShort } from '@/lib/thaiDate';
 import { LEAVE_TYPE_LABELS, LEAVE_STATUS_LABELS, LEAVE_TYPE_COLORS, LEAVE_STATUS_COLORS } from '@/types/leave';
 import type { LeaveType, LeaveStatus } from '@/types/leave';
-import { format, parseISO, isFuture, differenceInDays } from 'date-fns';
+import { format, parseISO, isFuture, differenceInCalendarDays } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { fetchCache } from '@/lib/fetchCache';
+import { PullToRefreshIndicator } from '@/components/PullToRefreshIndicator';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { useConfetti } from './hooks/useConfetti';
+import { ConfettiBurst } from './components/ConfettiBurst';
 
 // Lazy load Timeline component
 const TimelineSection = lazy(() => import('./components/TimelineSection'));
@@ -85,21 +89,13 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [pullStartY, setPullStartY] = useState(0);
-  const [pullDistance, setPullDistance] = useState(0);
-  const [isPulling, setIsPulling] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [selectedStatType, setSelectedStatType] = useState<LeaveType | null>(null);
-  const [statModalLeaves, setStatModalLeaves] = useState<RecentLeave[]>([]);
-  const [loadingStatModal, setLoadingStatModal] = useState(false);
+  const [confettiActive, triggerConfetti] = useConfetti();
   const initialLoadRef = useRef(false);
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
 
-  // Check if first time user (no leaves ever)
+  // recentLeaves ครอบคลุมทุกสถานะ ว่างแปลว่าไม่เคยยื่นใบลาเลย
   const isFirstTimeUser = !loading && recentLeaves.length === 0;
-  const hasNoLeavesThisPeriod = stats && Object.values(stats).every(s => s.count === 0);
+  const hasNoLeavesThisPeriod = !loading && !!stats && Object.values(stats).every((s) => s.count === 0);
 
   useEffect(() => {
     // Set current date on client side only
@@ -109,35 +105,43 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
     if (initialLoadRef.current) return;
     initialLoadRef.current = true;
 
-    fetchDashboardData();
-
     // Check if returning from successful leave submission
     const params = new URLSearchParams(window.location.search);
-    if (params.get('success') === 'true') {
-      toast.success('ยื่นใบลาสำเร็จ! 🎉');
+    const justSubmitted = params.get('success') === 'true';
+
+    // After submitting, skip every cache so the new leave shows up
+    if (justSubmitted) fetchCache.clear();
+    fetchDashboardData(false, justSubmitted);
+
+    if (justSubmitted) {
+      triggerConfetti();
       // Clean up URL
       window.history.replaceState({}, '', '/teacher');
     }
   }, []);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (silent = false, fresh = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
+
+      // Timeline is independent of the dashboard, so start both at once
+      const timelinePromise = fetchTimelineData(fresh);
 
       // Use fetchCache for deduplication and caching
       const data = await fetchCache.fetch('/api/teacher/dashboard', {
         cacheDuration: 30000, // 30 seconds cache
+        cacheBust: fresh,
       });
 
       setRecentLeaves(data.recent?.leaves || []);
       setStats(data.stats?.stats || {});
       setUpcomingLeaves(data.upcoming?.leaves || []);
-
-      // Lazy load timeline data separately
-      fetchTimelineData();
+      setLoading(false);
 
       // Prefetch the leave form route since it's the primary CTA
       router.prefetch('/teacher/leave/new');
+
+      await timelinePromise;
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
       toast.error('ไม่สามารถโหลดข้อมูลได้');
@@ -146,10 +150,11 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
     }
   };
 
-  const fetchTimelineData = async () => {
+  const fetchTimelineData = async (fresh = false) => {
     try {
       const data = await fetchCache.fetch('/api/teacher/leaves/timeline-lazy', {
         cacheDuration: 60000, // 60 seconds cache
+        cacheBust: fresh,
       });
 
       setTimeline({
@@ -204,71 +209,11 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
     }
   };
 
-  // Pull to refresh handlers
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (window.scrollY === 0) {
-      setPullStartY(e.touches[0].clientY);
-      setIsPulling(true);
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isPulling || !pullStartY) return;
-
-    if (window.scrollY > 0) {
-      setIsPulling(false);
-      setPullStartY(0);
-      setPullDistance(0);
-      return;
-    }
-
-    const currentY = e.touches[0].clientY;
-    const distance = currentY - pullStartY;
-
-    if (distance > 0 && distance < 150) {
-      setPullDistance(distance);
-      e.preventDefault();
-    }
-  };
-
-  const handleTouchEnd = async () => {
-    if (pullDistance > 100) {
-      setIsRefreshing(true);
-      // Clear cache before refresh
-      fetchCache.clear('/api/teacher/dashboard');
-      await fetchDashboardData();
-      setIsRefreshing(false);
-    }
-
-    setIsPulling(false);
-    setPullStartY(0);
-    setPullDistance(0);
-  };
-
-  const handleStatCardClick = async (type: LeaveType) => {
-    if (!stats || stats[type].count === 0) return;
-
-    setSelectedStatType(type);
-    setLoadingStatModal(true);
-
-    try {
-      const response = await fetch(`/api/teacher/leaves/recent?type=${type}`);
-      if (response.ok) {
-        const data = await response.json();
-        setStatModalLeaves(data.leaves || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch leaves:', error);
-      toast.error('ไม่สามารถโหลดข้อมูลได้');
-    } finally {
-      setLoadingStatModal(false);
-    }
-  };
-
-  const closeStatModal = () => {
-    setSelectedStatType(null);
-    setStatModalLeaves([]);
-  };
+  const { pull, state: pullState, threshold: pullThreshold } = usePullToRefresh(async () => {
+    fetchCache.clear('/api/teacher/dashboard');
+    fetchCache.clear('/api/teacher/leaves/timeline-lazy');
+    await fetchDashboardData(true, true);
+  });
 
   // Count pending leaves for badge
   const pendingCount = recentLeaves.filter(l => l.status === 'pending' || l.status === 'reviewed').length;
@@ -277,36 +222,9 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
     <>
       <SessionWarning sessionType="teacher" sessionCreatedAt={teacher.createdAt} />
 
-      <div
-        ref={containerRef}
-        className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        {/* Pull to refresh indicator */}
-        <AnimatePresence>
-          {isPulling && pullDistance > 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-4"
-              style={{ transform: `translateY(${Math.min(pullDistance - 40, 40)}px)` }}
-            >
-              <div className="bg-white dark:bg-slate-800 rounded-full p-2 shadow-xl shadow-sky-300/60 dark:shadow-sky-950/80">
-                <RefreshCw
-                  className={`w-5 h-5 transition-colors ${
-                    pullDistance > 100
-                      ? 'text-emerald-600 dark:text-emerald-400 animate-spin'
-                      : 'text-sky-600 dark:text-sky-400'
-                  }`}
-                  style={{ transform: pullDistance > 100 ? 'none' : `rotate(${pullDistance * 2}deg)` }}
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24">
+        <PullToRefreshIndicator pull={pull} state={pullState} threshold={pullThreshold} />
+        {confettiActive && <ConfettiBurst />}
         {/* Header */}
         <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="max-w-4xl mx-auto px-4 py-3">
@@ -379,8 +297,9 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
               )}
             </div>
             {loading ? (
-              <div className="h-24 flex items-center justify-center">
-                <RefreshCw className="w-6 h-6 text-sky-500 dark:text-sky-400 animate-spin" />
+              <div className="space-y-2 animate-pulse" aria-hidden="true">
+                <div className="h-[72px] rounded-lg bg-white/70 dark:bg-slate-900/60" />
+                <div className="h-[72px] rounded-lg bg-white/70 dark:bg-slate-900/60" />
               </div>
             ) : upcomingLeaves.length > 0 ? (
                 <div className="space-y-2">
@@ -390,7 +309,9 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
                     const displayType = leave.type === 'other' && leave.customTypeName
                       ? leave.customTypeName
                       : LEAVE_TYPE_LABELS[leave.type];
-                    const daysUntil = currentDate ? differenceInDays(new Date(leave.startDate), currentDate) : 0;
+                    const daysUntil = currentDate ? differenceInCalendarDays(new Date(leave.startDate), currentDate) : null;
+                    const daysUntilLabel =
+                      daysUntil === null ? '' : daysUntil <= 0 ? 'วันนี้' : daysUntil === 1 ? 'วันพรุ่งนี้' : `อีก ${daysUntil} วัน`;
                     const halfDayLabel = leave.isHalfDay
                       ? (leave.halfDayPeriod === 'morning' ? 'ครึ่งเช้า' : 'ครึ่งบ่าย')
                       : null;
@@ -430,7 +351,7 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
                             {formatThaiDateShort(new Date(leave.endDate))}
                           </span>
                           <span className="text-label text-sky-600 dark:text-sky-400">
-                            อีก {daysUntil} วัน
+                            {daysUntilLabel}
                           </span>
                         </div>
                         </div>
@@ -471,7 +392,22 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
                   >
                     📅
                   </motion.div>
-                  <p>ไม่มีใบลาที่กำลังจะถึง</p>
+                  {isFirstTimeUser ? (
+                    <>
+                      <p className="font-medium text-slate-900 dark:text-slate-100">ยินดีต้อนรับ</p>
+                      <p className="mt-1">คุณยังไม่เคยยื่นใบลา เริ่มยื่นครั้งแรกได้เลย</p>
+                      <button
+                        type="button"
+                        onClick={() => router.push('/teacher/leave/new')}
+                        className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-medium shadow-lg shadow-sky-500/30 transition-all active:scale-[0.98]"
+                      >
+                        <Plus className="w-4 h-4" aria-hidden="true" />
+                        ยื่นใบลาครั้งแรก
+                      </button>
+                    </>
+                  ) : (
+                    <p>ไม่มีใบลาที่กำลังจะถึง</p>
+                  )}
                 </motion.div>
               )}
           </motion.div>
@@ -484,6 +420,15 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
                 สถิติการลารอบนี้
               </h2>
             </div>
+            {hasNoLeavesThisPeriod ? (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 rounded-xl border border-slate-100 dark:border-slate-800/50 bg-slate-50 dark:bg-slate-900/50 text-center text-body-sm text-secondary"
+              >
+                ยังไม่มีการลาในรอบนี้
+              </motion.div>
+            ) : (
             <div className="grid grid-cols-2 gap-2">
               {(['sick', 'personal', 'maternity', 'religious'] as LeaveType[]).map((type, idx) => {
                 const stat = stats?.[type];
@@ -496,12 +441,10 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 + idx * 0.1, type: 'spring', damping: 25 }}
-                    whileHover={hasData ? { scale: 1.03, y: -2 } : undefined}
-                    onClick={() => stat && handleStatCardClick(type)}
-                    className={`p-3 rounded-xl border transition-all ${
+                    className={`p-3 rounded-xl border ${
                       hasData
-                        ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60 hover:shadow-xl hover:shadow-sky-200/50 dark:hover:shadow-sky-950/50 hover:border-sky-300 dark:hover:border-sky-700 cursor-pointer'
-                        : 'bg-slate-50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-800/50 cursor-default shadow-sm'
+                        ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60'
+                        : 'bg-slate-50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-800/50 shadow-sm'
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-2">
@@ -510,8 +453,9 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
                       </span>
                     </div>
                     {loading || !stat ? (
-                      <div className="h-[52px] flex items-center">
-                        <RefreshCw className="w-5 h-5 text-slate-400 dark:text-slate-500 animate-spin" />
+                      <div className="h-[52px] space-y-2 animate-pulse" aria-hidden="true">
+                        <div className="h-7 w-16 rounded bg-slate-200 dark:bg-slate-800" />
+                        <div className="h-4 w-12 rounded bg-slate-200 dark:bg-slate-800" />
                       </div>
                     ) : (
                       <div className="space-y-1">
@@ -530,6 +474,7 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
                 );
               })}
             </div>
+            )}
           </div>
 
           {/* Leave Timeline - Lazy loaded */}

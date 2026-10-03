@@ -1,13 +1,18 @@
 'use client';
 
-import { ReactNode } from 'react';
-import { Check, Eye } from 'lucide-react';
+import { ReactNode, useState } from 'react';
+import { Check, Eye, RefreshCw } from 'lucide-react';
+import type { MotionValue } from 'framer-motion';
+import { PullToRefreshIndicator } from '@/components/PullToRefreshIndicator';
+import type { PullState } from '@/hooks/usePullToRefresh';
 
 interface LeaveReviewShellProps {
   title: string;
   subtitle: string;
-  pullDistance: number;
-  isRefreshing: boolean;
+  pull: MotionValue<number>;
+  pullState: PullState;
+  pullThreshold: number;
+  onRefresh: () => Promise<unknown>;
   // แสดงแถบ "ดูอย่างเดียว" ใต้หัวข้อ
   readOnlyNote?: string;
   // แท็บหรือส่วนเสริมใต้หัวข้อ
@@ -22,8 +27,10 @@ interface LeaveReviewShellProps {
 export default function LeaveReviewShell({
   title,
   subtitle,
-  pullDistance,
-  isRefreshing,
+  pull,
+  pullState,
+  pullThreshold,
+  onRefresh,
   readOnlyNote,
   headerExtra,
   loading,
@@ -32,31 +39,41 @@ export default function LeaveReviewShell({
   emptyDescription,
   children,
 }: LeaveReviewShellProps) {
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
     <div className="bg-slate-50 dark:bg-slate-950 pb-24 lg:pb-8">
-      {/* Pull-to-refresh indicator */}
-      {pullDistance > 0 && (
-        <div
-          className="fixed top-0 left-0 right-0 flex justify-center z-50 pointer-events-none"
-          style={{ transform: `translateY(${Math.min(pullDistance - 20, 40)}px)` }}
-        >
-          <div className="bg-white dark:bg-slate-900 rounded-full p-2 shadow-lg">
-            <div
-              className={`w-5 h-5 border-2 border-sky-500 border-t-transparent rounded-full ${isRefreshing ? 'animate-spin' : ''}`}
-              style={{
-                transform: `rotate(${pullDistance * 3.6}deg)`,
-                transition: isRefreshing ? 'none' : 'transform 0.1s',
-              }}
-            />
-          </div>
-        </div>
-      )}
+      <PullToRefreshIndicator pull={pull} state={pullState} threshold={pullThreshold} />
 
       {/* Header */}
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 py-3">
-          <h1 className="text-base font-bold text-slate-900 dark:text-slate-100">{title}</h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400">{subtitle}</p>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-base font-bold text-slate-900 dark:text-slate-100">{title}</h1>
+              <p className="text-sm text-slate-600 dark:text-slate-400">{subtitle}</p>
+            </div>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing || loading}
+              className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
+              aria-label="รีเฟรชข้อมูล"
+            >
+              <RefreshCw
+                className={`w-4 h-4 text-slate-700 dark:text-slate-300 ${refreshing ? 'animate-spin' : ''}`}
+              />
+            </button>
+          </div>
 
           {readOnlyNote && (
             <div className="mt-2 flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg">

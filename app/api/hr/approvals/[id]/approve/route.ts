@@ -125,9 +125,10 @@ export async function POST(
     }
 
     // Step 5: Audit log (fire-and-forget - don't block response)
-    createAuditLog({
+    const actorRole = session.role;
+    after(() => createAuditLog({
       userId: session.id,
-      userType: session.role,
+      userType: actorRole,
       action: 'APPROVE_LEAVE',
       resource: 'leaves',
       resourceId: leave.id,
@@ -145,7 +146,7 @@ export async function POST(
       },
       ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined,
       userAgent: request.headers.get('user-agent') || undefined,
-    }).catch(err => console.error('[APPROVE] Audit log failed (non-blocking):', err));
+    }).catch(err => console.error('[APPROVE] Audit log failed (non-blocking):', err)));
 
     after(() =>
       sendPushToTeacher(leave.teacherId, {

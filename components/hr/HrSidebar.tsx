@@ -285,7 +285,7 @@ export default function HrSidebar({ hrUser, counts }: HrSidebarProps) {
       {/* Version */}
       {!collapsed && (
         <div className="px-4 py-2 text-center text-xs text-slate-400 dark:text-slate-600">
-          v1.0.0-beta
+          v{process.env.NEXT_PUBLIC_APP_VERSION}
         </div>
       )}
     </aside>

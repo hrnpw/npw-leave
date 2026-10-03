@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, X, FileText, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -10,7 +10,7 @@ import LeaveReviewCard from '@/components/hr/leaveReview/LeaveReviewCard';
 import LeaveReviewShell from '@/components/hr/leaveReview/LeaveReviewShell';
 import ConfirmLeaveDialog from '@/components/hr/leaveReview/ConfirmLeaveDialog';
 import RejectLeaveDialog from '@/components/hr/leaveReview/RejectLeaveDialog';
-import { usePullToRefresh } from '@/components/hr/leaveReview/usePullToRefresh';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { fetchLeaveList, postLeaveAction, vibrate } from '@/components/hr/leaveReview/api';
 import type { ReviewLeave } from '@/components/hr/leaveReview/types';
 
@@ -37,6 +37,8 @@ export default function ReviewsClient({ hrUser }: ReviewsClientProps) {
   const canAct = canReview(hrUser.role);
   const [tab, setTab] = useState<Tab>('pending');
   const [leaves, setLeaves] = useState<ReviewLeave[]>([]);
+  const [total, setTotal] = useState(0);
+  const latestRequestRef = useRef(0);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [reviewingLeave, setReviewingLeave] = useState<ReviewLeave | null>(null);
@@ -46,11 +48,17 @@ export default function ReviewsClient({ hrUser }: ReviewsClientProps) {
   const loadLeaves = useCallback(
     async (showSkeleton = true) => {
       if (showSkeleton) setLoading(true);
+      const requestId = ++latestRequestRef.current;
       const data = await fetchLeaveList(
         `/api/hr/reviews/pending?status=${tab}`,
         'ไม่สามารถโหลดรายการใบลาได้'
       );
-      if (data) setLeaves(data);
+      // ทิ้งผลของ request เก่า (เช่น สลับแท็บเร็ว ๆ แล้ว response แท็บก่อนหน้ามาช้า)
+      if (requestId !== latestRequestRef.current) return;
+      if (data) {
+        setLeaves(data.leaves);
+        setTotal(data.total);
+      }
       setLoading(false);
     },
     [tab]
@@ -58,14 +66,26 @@ export default function ReviewsClient({ hrUser }: ReviewsClientProps) {
 
   useEffect(() => {
     loadLeaves();
-    // Auto-refresh every 60 seconds
-    const interval = setInterval(() => loadLeaves(false), 60000);
-    return () => clearInterval(interval);
+    // Auto-refresh every 60 seconds, but not while the tab is hidden
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') loadLeaves(false);
+    }, 60000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') loadLeaves(false);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [loadLeaves]);
 
-  const { pullDistance, isRefreshing } = usePullToRefresh(() => loadLeaves(false));
+  const { pull, state: pullState, threshold: pullThreshold } = usePullToRefresh(() => loadLeaves(false));
 
-  const removeLeave = (id: string) => setLeaves((prev) => prev.filter((l) => l.id !== id));
+  const removeLeave = (id: string) => {
+    setLeaves((prev) => prev.filter((l) => l.id !== id));
+    setTotal((prev) => Math.max(0, prev - 1));
+  };
 
   const confirmReview = async () => {
     if (!reviewingLeave) return;
@@ -154,9 +174,11 @@ export default function ReviewsClient({ hrUser }: ReviewsClientProps) {
     <HrLayoutWrapper hrUser={hrUser}>
       <LeaveReviewShell
         title="ตรวจใบลา"
-        subtitle={`${isPendingTab ? 'รอตรวจสอบ' : 'ส่งต่อแล้ว รอ ผอ. อนุมัติ'} ${leaves.length} ใบลา`}
-        pullDistance={pullDistance}
-        isRefreshing={isRefreshing}
+        subtitle={`${isPendingTab ? 'รอตรวจสอบ' : 'ส่งต่อแล้ว รอ ผอ. อนุมัติ'} ${total} ใบลา`}
+        pull={pull}
+        pullState={pullState}
+        pullThreshold={pullThreshold}
+        onRefresh={() => loadLeaves(false)}
         readOnlyNote={canAct ? undefined : 'ดูได้อย่างเดียว การตรวจใบลาเป็นของเจ้าหน้าที่ HR'}
         headerExtra={tabBar}
         loading={loading}

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { after } from 'next/server';
 import { getHrSession } from '@/lib/getSession';
 import { prisma } from '@/lib/prisma';
 import { checkTransition } from '@/lib/leaveWorkflow';
@@ -48,9 +49,10 @@ export async function POST(
       );
     }
 
-    createAuditLog({
+    const actorRole = session.role;
+    after(() => createAuditLog({
       userId: session.id,
-      userType: session.role,
+      userType: actorRole,
       action: AuditActions.RECALL_REVIEW,
       resource: AuditResources.LEAVES,
       resourceId: leave.id,
@@ -62,7 +64,7 @@ export async function POST(
       },
       ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined,
       userAgent: request.headers.get('user-agent') || undefined,
-    }).catch(err => console.error('[RECALL] Audit log failed (non-blocking):', err));
+    }).catch(err => console.error('[RECALL] Audit log failed (non-blocking):', err)));
 
     return NextResponse.json({ success: true, message: 'ดึงกลับใบลาสำเร็จ' });
   } catch (error) {

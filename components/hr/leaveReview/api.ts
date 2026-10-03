@@ -7,15 +7,20 @@ const NETWORK_ERROR = {
 };
 
 /** โหลดรายการใบลา คืน null ถ้าโหลดไม่สำเร็จ (แสดง toast ให้แล้ว) */
-export async function fetchLeaveList(url: string, errorTitle: string): Promise<ReviewLeave[] | null> {
+export async function fetchLeaveList(
+  url: string,
+  errorTitle: string
+): Promise<{ leaves: ReviewLeave[]; total: number } | null> {
   try {
-    const res = await fetch(url);
+    // ขอทีเดียวทั้งหมด (API default คือ 20 ใบ ซึ่งจะตัดรายการที่เหลือทิ้งเงียบ ๆ)
+    const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}limit=200`);
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));
       throw new Error(error.error || 'ไม่สามารถโหลดข้อมูลได้');
     }
     const data = await res.json();
-    return data.leaves as ReviewLeave[];
+    const leaves = data.leaves as ReviewLeave[];
+    return { leaves, total: data.pagination?.total ?? leaves.length };
   } catch (error: any) {
     console.error('Failed to fetch leaves:', error);
     if (error.message === 'Failed to fetch') {

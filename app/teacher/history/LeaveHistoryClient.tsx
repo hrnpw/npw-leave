@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { parseError, getSuccessMessage } from '@/lib/errorMessages';
 import { parseDateFromAPI, isSameDay } from '@/lib/client-date-utils';
 import { formatThaiDate, formatThaiDateShort } from '@/lib/thaiDate';
+import { ConfirmCancelSheet } from '@/components/ConfirmCancelSheet';
 import type { LeaveType, LeaveStatus } from '@/types/leave';
 import {
   LEAVE_TYPE_LABELS,
@@ -71,6 +72,7 @@ export default function LeaveHistoryClient({ teacher }: LeaveHistoryClientProps)
     type: '',
   });
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [confirmLeave, setConfirmLeave] = useState<{ id: string; leaveNo: string } | null>(null);
 
   useEffect(() => {
     fetchLeaves();
@@ -103,9 +105,6 @@ export default function LeaveHistoryClient({ teacher }: LeaveHistoryClientProps)
   };
 
   const handleCancelLeave = async (leaveId: string) => {
-    const confirmed = confirm('คุณต้องการยกเลิกใบลานี้หรือไม่?');
-    if (!confirmed) return;
-
     try {
       setCancellingId(leaveId);
 
@@ -130,6 +129,7 @@ export default function LeaveHistoryClient({ teacher }: LeaveHistoryClientProps)
       toast.error(error.message || 'ไม่สามารถยกเลิกใบลาได้');
     } finally {
       setCancellingId(null);
+      setConfirmLeave(null);
     }
   };
 
@@ -380,22 +380,12 @@ export default function LeaveHistoryClient({ teacher }: LeaveHistoryClientProps)
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleCancelLeave(leave.id);
+                          setConfirmLeave({ id: leave.id, leaveNo: leave.leaveNo });
                         }}
-                        disabled={cancellingId === leave.id}
-                        className="w-full py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="w-full py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg font-medium transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                       >
-                        {cancellingId === leave.id ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-red-400 border-t-red-600 rounded-full animate-spin" />
-                            <span>กำลังยกเลิก...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Trash2 className="w-4 h-4" />
-                            <span>ยกเลิกใบลา</span>
-                          </>
-                        )}
+                        <Trash2 className="w-4 h-4" aria-hidden="true" />
+                        <span>ยกเลิกใบลา</span>
                       </button>
                     )}
                   </motion.div>
@@ -428,6 +418,14 @@ export default function LeaveHistoryClient({ teacher }: LeaveHistoryClientProps)
           </>
         )}
       </main>
+
+      <ConfirmCancelSheet
+        open={confirmLeave !== null}
+        leaveNo={confirmLeave?.leaveNo}
+        loading={cancellingId !== null}
+        onConfirm={() => confirmLeave && handleCancelLeave(confirmLeave.id)}
+        onClose={() => setConfirmLeave(null)}
+      />
 
       {/* Bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 safe-area-bottom z-50">
