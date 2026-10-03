@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users,
   UserMinus,
@@ -21,6 +21,7 @@ import {
   KeyRound,
   Loader2
 } from 'lucide-react';
+import { LeaveStatusIcon, LeaveStatusIconLegend } from '@/components/LeaveStatusIcon';
 import { toast } from 'sonner';
 import { CountUp } from '@/components/CountUp';
 import { formatFullThaiDate, formatThaiDate } from '@/lib/thaiDate';
@@ -70,6 +71,7 @@ interface LeaveToday {
   reason: string;
   contactAddress: string;
   submittedByType: 'teacher' | 'hr';
+  status: LeaveStatus;
 }
 
 interface HeatmapDay {
@@ -88,6 +90,7 @@ interface HeatmapDay {
     customTypeName: string | null;
     isHalfDay: boolean;
     halfDayPeriod: string | null;
+    status: LeaveStatus;
   }>;
 }
 
@@ -593,6 +596,7 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                               <span className={`px-1.5 py-0.5 text-xs rounded ${typeColors[leave.type]}`}>
                                 {leave.type === 'other' && leave.customTypeName ? leave.customTypeName : typeLabels[leave.type]}
                               </span>
+                              <LeaveStatusIcon status={leave.status} />
                               {leave.isHalfDay && (
                                 <span className="px-1.5 py-0.5 text-xs rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                                   {leave.halfDayPeriod === 'morning' ? 'ครึ่งเช้า' : 'ครึ่งบ่าย'}
@@ -775,26 +779,34 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                     <span>10+</span>
                   </div>
                 </div>
+                <LeaveStatusIconLegend />
               </div>
             )}
             </motion.div>
           </div>
 
           {/* Stats Cards Modal */}
+          <AnimatePresence>
           {modalType && (
-            <div
-              className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+            <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               onClick={() => {
                 setModalType(null);
                 setModalData([]);
               }}
-            >
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
               <motion.div
-                initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 50 }}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ type: 'spring', damping: 30, stiffness: 300 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-xl border border-slate-200 dark:border-slate-800 w-full max-w-md max-h-[80vh] overflow-y-auto"
+                className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto pointer-events-auto"
               >
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
@@ -865,6 +877,7 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                             <span className={`px-1.5 py-0.5 text-xs rounded ${typeColors[item.type]}`}>
                               {item.type === 'other' && item.customTypeName ? item.customTypeName : typeLabels[item.type]}
                             </span>
+                            {modalType !== 'pending' && <LeaveStatusIcon status={item.status} />}
                             {modalType === 'pending' && (
                               <span className={`px-1.5 py-0.5 text-xs rounded border ${LEAVE_STATUS_COLORS[item.status as LeaveStatus].light} ${LEAVE_STATUS_COLORS[item.status as LeaveStatus].dark}`}>
                                 {LEAVE_STATUS_LABELS[item.status as LeaveStatus]}
@@ -890,20 +903,29 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                 )}
               </motion.div>
             </div>
+            </>
           )}
+          </AnimatePresence>
 
           {/* Selected Day Detail Modal */}
+          <AnimatePresence>
           {selectedDay && (
-            <div
-              className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+            <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               onClick={() => setSelectedDay(null)}
-            >
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
               <motion.div
-                initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 50 }}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ type: 'spring', damping: 30, stiffness: 300 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-xl border border-slate-200 dark:border-slate-800 w-full max-w-md max-h-[80vh] overflow-y-auto"
+                className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto pointer-events-auto"
               >
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
@@ -961,6 +983,7 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                           <span className={`px-1.5 py-0.5 text-xs rounded ${typeColors[leave.type]}`}>
                             {leave.type === 'other' && leave.customTypeName ? leave.customTypeName : typeLabels[leave.type]}
                           </span>
+                          <LeaveStatusIcon status={leave.status} />
                           {leave.isHalfDay && (
                             <span className="px-1.5 py-0.5 text-xs rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                               {leave.halfDayPeriod === 'morning' ? 'ครึ่งเช้า' : 'ครึ่งบ่าย'}
@@ -975,13 +998,19 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                 </div>
               </motion.div>
             </div>
+            </>
           )}
+          </AnimatePresence>
         </main>
 
         {/* Change Password Dialog */}
+        <AnimatePresence>
         {showChangePassword && (
-          <div
-            className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+          <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             onClick={() => {
               if (!changingPassword) {
                 setShowChangePassword(false);
@@ -990,13 +1019,16 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                 setConfirmPassword('');
               }
             }}
-          >
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
             <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 50 }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xl border border-slate-200 dark:border-slate-800 w-full max-w-md"
+              className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto pointer-events-auto"
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
@@ -1087,7 +1119,9 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
               </div>
             </motion.div>
           </div>
+          </>
         )}
+        </AnimatePresence>
       </div>
     </HrLayoutWrapper>
   );

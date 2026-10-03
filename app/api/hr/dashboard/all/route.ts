@@ -45,7 +45,7 @@ export async function GET(request: Request) {
       }),
       prisma.leave.count({
         where: {
-          status: 'approved',
+          status: { in: ['reviewed', 'approved'] },
           startDate: { lte: todayEnd },
           endDate: { gte: todayStart },
           isHalfDay: false,
@@ -53,14 +53,14 @@ export async function GET(request: Request) {
       }),
       prisma.leave.count({
         where: {
-          status: 'approved',
+          status: { in: ['reviewed', 'approved'] },
           startDate: { lte: todayEnd },
           endDate: { gte: todayStart },
         },
       }),
       prisma.leave.count({
         where: {
-          status: 'approved',
+          status: { in: ['reviewed', 'approved'] },
           startDate: { lte: tomorrowEnd },
           endDate: { gte: tomorrowStart },
         },
@@ -79,7 +79,7 @@ export async function GET(request: Request) {
       // Leaves today with full info
       prisma.leave.findMany({
         where: {
-          status: 'approved',
+          status: { in: ['reviewed', 'approved'] },
           startDate: { lte: todayEnd },
           endDate: { gte: todayStart },
         },
@@ -97,6 +97,7 @@ export async function GET(request: Request) {
           reason: true,
           contactAddress: true,
           submittedByType: true,
+          status: true,
           teacher: {
             select: {
               id: true,
@@ -166,6 +167,7 @@ export async function GET(request: Request) {
       reason: leave.reason,
       contactAddress: leave.contactAddress,
       submittedByType: leave.submittedByType,
+      status: leave.status,
     }));
 
     return NextResponse.json(

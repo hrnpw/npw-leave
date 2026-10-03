@@ -17,6 +17,7 @@ interface LeaveTypeCount {
     department: string | null;
     isHalfDay: boolean;
     halfDayPeriod?: 'morning' | 'afternoon';
+    status: string;
   }[];
 }
 
@@ -67,7 +68,7 @@ export async function GET() {
       // 4. Leaves for today
       prisma.leave.findMany({
         where: {
-          status: 'approved',
+          status: { in: ['reviewed', 'approved'] },
           startDate: { lte: todayEnd },
           endDate: { gte: todayStart },
         },
@@ -77,6 +78,7 @@ export async function GET() {
           customTypeName: true,
           isHalfDay: true,
           halfDayPeriod: true,
+          status: true,
           teacher: {
             select: {
               id: true,
@@ -92,7 +94,7 @@ export async function GET() {
       // 5. Leaves for tomorrow (just count)
       prisma.leave.count({
         where: {
-          status: 'approved',
+          status: { in: ['reviewed', 'approved'] },
           startDate: { lte: tomorrowEnd },
           endDate: { gte: tomorrowStart },
         },
@@ -129,6 +131,7 @@ export async function GET() {
         department: leave.teacher.department,
         isHalfDay: leave.isHalfDay,
         halfDayPeriod: leave.halfDayPeriod || undefined,
+        status: leave.status,
       });
     });
 

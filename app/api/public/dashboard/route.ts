@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       // 1. Heatmap data - get approved leaves in the month with their days
       prisma.leave.findMany({
         where: {
-          status: 'approved',
+          status: { in: ['reviewed', 'approved'] },
           startDate: { lte: monthEnd },
           endDate: { gte: monthStart },
         },
@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
           id: true,
           type: true,
           customTypeName: true,
+          status: true,
           teacher: {
             select: {
               id: true,
@@ -89,6 +90,7 @@ export async function GET(request: NextRequest) {
       customTypeName: string | null;
       isHalfDay: boolean;
       halfDayPeriod?: string;
+      status: string;
     }>>();
 
     // Flatten leaves and their days
@@ -107,6 +109,7 @@ export async function GET(request: NextRequest) {
           customTypeName: leave.customTypeName,
           isHalfDay: leaveDay.isHalfDay,
           halfDayPeriod: leaveDay.halfDayPeriod || undefined,
+          status: leave.status,
         });
 
         leavesByDate.set(dateKey, existing);

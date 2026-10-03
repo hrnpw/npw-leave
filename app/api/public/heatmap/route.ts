@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     const leaveDays = await prisma.leaveDay.findMany({
       where: {
         date: { gte: monthStart, lte: monthEnd },
-        leave: { status: 'approved' },
+        leave: { status: { in: ['reviewed', 'approved'] } },
       },
       include: {
         leave: {
@@ -77,6 +77,7 @@ export async function GET(request: Request) {
             customTypeName: leaveDay.leave.customTypeName,
             isHalfDay: leaveDay.isHalfDay,
             halfDayPeriod: leaveDay.halfDayPeriod,
+            status: leaveDay.leave.status,
           });
         }
       }

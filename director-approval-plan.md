@@ -1,7 +1,8 @@
 # Plan: เพิ่ม role ผู้อำนวยการ + อนุมัติใบลา 2 ขั้น
 
-สถานะ (2026-10-03): ทำข้อ 1-6 ใน "ลำดับการทำงาน" (ข้อ 9) เสร็จแล้ว tsc, vitest และ build ผ่าน ยังไม่ได้ทดสอบด้วยมือ ยังไม่ commit (ตั้งใจ commit ทีเดียวตอนโค้ดเสร็จ) ถัดไปคือข้อ 7 ทดสอบด้วยมือ
-- ไฟล์ migration `20261002164426_add_director_role_and_review_status` ยังเป็น untracked ห้ามลบหรือแก้
+สถานะ (2026-10-03): deploy เสร็จแล้ว commit `c9fc1da` push ขึ้น `master` แล้ว และ `migrate deploy` ลง Neon `production` แล้ว (มี backup branch `backup-before-director`) `.env` ชี้กลับมาที่ `dev` แล้ว
+- ที่เหลือ: เช็ค Vercel deployment, สร้างบัญชี ผอ. ผ่านหน้า Admin, ทดสอบสั้นๆ บน production
+- Rollback: Vercel Instant Rollback (DB ไม่ต้องย้อน เพราะ migration เพิ่มอย่างเดียว)
 
 ## Flow
 
@@ -188,8 +189,8 @@ Telegram
 4. ✅ API ฝั่ง review และ approval รวมถึง push (POST ของ reviews/approvals เช็คสิทธิ์คืน 403 ส่วน GET `reviews/pending` เปิดให้ทุก role ของ HR อ่านได้ ตามข้อตกลงดูข้ามหน้า)
 5. ✅ ให้ `director` ใช้งานจัดการได้เหมือน hr (`canManage`), แก้ `userType` ใน leaves edit/cancel ให้มาจาก role จริง, `admin/users` รับ role `director`
 6. ✅ UI: หน้า reviews/approvals, เมนู, ป้ายสถานะ, ตัวกรอง, Admin, ปุ่มยกเลิกของครู
-7. ✅ทดสอบ (ข้อ 10)
-8. Deploy (ข้อ 11)
+7. ✅ ทดสอบ (ข้อ 10)
+8. ✅ Deploy (ข้อ 11) ทำข้อ 1-5 แล้ว เหลือข้อ 6 สร้างบัญชี ผอ.
 
 ## 10. การทดสอบ
 - Unit test (vitest) สำหรับ `leaveWorkflow` ทุก transition ทั้งที่ทำได้และที่ห้าม และสำหรับ helper ใน `lib/roles.ts`

@@ -10,8 +10,9 @@ import { DarkModeToggle } from '@/components/DarkModeToggle';
 import { HeatmapCalendar } from '@/components/HeatmapCalendar';
 import { formatFullThaiDate } from '@/lib/thaiDate';
 import { LEAVE_TYPE_LABELS, LEAVE_TYPE_COLORS, HALF_DAY_PERIOD_LABELS } from '@/types/leave';
-import type { LeaveType, HalfDayPeriod } from '@/types/leave';
+import type { LeaveType, HalfDayPeriod, LeaveStatus } from '@/types/leave';
 import { fetchCache } from '@/lib/fetchCache';
+import { LeaveStatusIcon, LeaveStatusIconLegend } from '@/components/LeaveStatusIcon';
 
 interface PublicSummary {
   date: string;
@@ -33,6 +34,7 @@ interface PublicSummary {
       department: string | null;
       isHalfDay: boolean;
       halfDayPeriod?: HalfDayPeriod;
+      status: LeaveStatus;
     }[];
   }[];
 }
@@ -47,6 +49,7 @@ interface DayLeave {
   customTypeName?: string;
   isHalfDay: boolean;
   halfDayPeriod?: HalfDayPeriod;
+  status: LeaveStatus;
 }
 
 interface HeatmapDay {
@@ -476,6 +479,7 @@ export default function HomePage() {
                         <span className={`px-1.5 py-0.5 text-caption rounded border flex-shrink-0 ${typeColors.light} ${typeColors.dark}`}>
                           {displayType}
                         </span>
+                        <LeaveStatusIcon status={teacher.status} />
                         {teacher.isHalfDay && teacher.halfDayPeriod && (
                           <span className="px-1.5 py-0.5 text-caption bg-slate-100 dark:bg-slate-800 text-secondary rounded flex-shrink-0">
                             {HALF_DAY_PERIOD_LABELS[teacher.halfDayPeriod]}
@@ -525,6 +529,7 @@ export default function HomePage() {
             onDayClick={handleDayClick}
             holidays={holidays}
           />
+          <LeaveStatusIconLegend className="pt-3" />
         </motion.div>
 
         {/* Modal for day details */}
@@ -589,6 +594,7 @@ export default function HomePage() {
                             <span className={`px-1.5 py-0.5 text-caption rounded flex-shrink-0 ${colorClass.light} ${colorClass.dark}`}>
                               {typeLabel}
                             </span>
+                            <LeaveStatusIcon status={leave.status} />
                             {leave.isHalfDay && leave.halfDayPeriod && (
                               <span className="px-1.5 py-0.5 text-caption rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 flex-shrink-0">
                                 {HALF_DAY_PERIOD_LABELS[leave.halfDayPeriod]}

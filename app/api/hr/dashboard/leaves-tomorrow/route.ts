@@ -21,7 +21,7 @@ export async function GET() {
     // Get all leaves tomorrow with full teacher info
     const leaves = await prisma.leave.findMany({
       where: {
-        status: 'approved',
+        status: { in: ['reviewed', 'approved'] },
         startDate: { lte: tomorrowEnd },
         endDate: { gte: tomorrowStart },
       },

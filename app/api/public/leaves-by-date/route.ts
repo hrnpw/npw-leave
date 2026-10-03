@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     // Find all approved leaves that overlap with the target date
     const leaves = await prisma.leave.findMany({
       where: {
-        status: 'approved',
+        status: { in: ['reviewed', 'approved'] },
         startDate: { lte: targetDate },
         endDate: { gte: targetDate },
       },
@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
       customTypeName: leave.type === 'other' ? undefined : leave.customTypeName ?? undefined,
       isHalfDay: leave.isHalfDay,
       halfDayPeriod: leave.halfDayPeriod as HalfDayPeriod | undefined,
+      status: leave.status,
     }));
 
     return NextResponse.json({
