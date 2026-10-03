@@ -2,7 +2,7 @@
 
 ระบบยื่น/อนุมัติใบลาสำหรับโรงเรียน (Mobile Web App, Next.js + PWA)
 
-- เพิ่ม ผู้อำนวยการ(director)
+- เพิ่ม ผู้อำนวยการ(director) ยังไม่เร็จ
 @director-approval-plan.md
 
 ## Code 

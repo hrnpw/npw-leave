@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getHrSession } from '@/lib/getSession';
 import { prisma } from '@/lib/prisma';
 import { formatDateForAPI } from '@/lib/dateFormat';
+import { AuditActions } from '@/lib/auditLog';
 
 export async function GET(
   req: NextRequest,
@@ -61,6 +62,18 @@ export async function GET(
       return NextResponse.json({ error: 'Leave not found' }, { status: 404 });
     }
 
+    // ใบที่ไม่อนุมัติ: ดูจาก audit log ล่าสุดว่าถูกตีกลับขั้นไหน (review = HR, approval = ผอ.)
+    let rejectionStage: 'review' | 'approval' | null = null;
+    if (leave.status === 'rejected') {
+      const rejectLog = await prisma.auditLog.findFirst({
+        where: { resourceId: leave.id, action: AuditActions.REJECT_LEAVE },
+        orderBy: { createdAt: 'desc' },
+        select: { details: true },
+      });
+      const stage = (rejectLog?.details as { stage?: unknown } | null)?.stage;
+      if (stage === 'review' || stage === 'approval') rejectionStage = stage;
+    }
+
     return NextResponse.json({
       leave: {
         id: leave.id,
@@ -78,6 +91,7 @@ export async function GET(
         contactPhone: leave.contactPhone,
         status: leave.status,
         rejectionReason: leave.rejectionReason,
+        rejectionStage,
         submittedByType: leave.submittedByType,
         submittedByHr: leave.submittedByHr,
         proxyReason: leave.proxyReason,

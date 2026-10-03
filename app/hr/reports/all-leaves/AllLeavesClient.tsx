@@ -21,12 +21,14 @@ import { toast } from 'sonner';
 import HrLayoutWrapper from '@/components/hr/HrLayoutWrapper';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
+import type { HrRole } from '@/lib/roles';
+import { LEAVE_STATUS_LABELS, LEAVE_STATUS_COLORS, type LeaveStatus } from '@/types/leave';
 
 interface HrUser {
   id: string;
   firstName: string;
   lastName: string;
-  role: 'hr' | 'super_admin';
+  role: HrRole;
 }
 
 interface LeaveRecord {
@@ -44,7 +46,7 @@ interface LeaveRecord {
   endDate: string;
   period: 'morning' | 'afternoon' | null;
   daysWorking: number;
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  status: LeaveStatus;
   approverNameSnapshot: string | null;
   reviewerNameSnapshot: string | null;
   createdAt: string;
@@ -97,7 +99,8 @@ export default function AllLeavesClient({ hrUser }: { hrUser: HrUser }) {
   const stats = useMemo(() => {
     return {
       total: leaves.length,
-      pending: leaves.filter(l => l.status === 'pending').length,
+      // ยังไม่จบ: รอตรวจสอบ + รอ ผอ. อนุมัติ
+      pending: leaves.filter(l => l.status === 'pending' || l.status === 'reviewed').length,
       approved: leaves.filter(l => l.status === 'approved').length,
       rejected: leaves.filter(l => l.status === 'rejected').length,
     };
@@ -179,15 +182,12 @@ export default function AllLeavesClient({ hrUser }: { hrUser: HrUser }) {
   };
 
   const getStatusBadge = (leave: LeaveRecord) => {
-    if (leave.status === 'pending') {
-      return <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs rounded-full">รออนุมัติ</span>;
-    } else if (leave.status === 'approved') {
-      return <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs rounded-full">อนุมัติแล้ว</span>;
-    } else if (leave.status === 'rejected') {
-      return <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs rounded-full">ไม่อนุมัติ</span>;
-    } else {
-      return <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400 text-xs rounded-full">ยกเลิก</span>;
-    }
+    const colors = LEAVE_STATUS_COLORS[leave.status];
+    return (
+      <span className={`px-2 py-1 text-xs rounded-full border ${colors.light} ${colors.dark}`}>
+        {LEAVE_STATUS_LABELS[leave.status]}
+      </span>
+    );
   };
 
   const totalPages = Math.ceil(total / limit);
@@ -242,7 +242,7 @@ export default function AllLeavesClient({ hrUser }: { hrUser: HrUser }) {
                 <div className="text-xl font-bold text-slate-900 dark:text-slate-100">{stats.total}</div>
               </div>
               <div className="bg-yellow-100 dark:bg-yellow-900/30 rounded-lg p-3">
-                <div className="text-xs text-yellow-700 dark:text-yellow-400">รออนุมัติ</div>
+                <div className="text-xs text-yellow-700 dark:text-yellow-400">รอดำเนินการ</div>
                 <div className="text-xl font-bold text-yellow-700 dark:text-yellow-400">{stats.pending}</div>
               </div>
               <div className="bg-green-100 dark:bg-green-900/30 rounded-lg p-3">
@@ -325,7 +325,8 @@ export default function AllLeavesClient({ hrUser }: { hrUser: HrUser }) {
                         className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm"
                       >
                         <option value="">ทั้งหมด</option>
-                        <option value="pending">รออนุมัติ</option>
+                        <option value="pending">{LEAVE_STATUS_LABELS.pending}</option>
+                        <option value="reviewed">{LEAVE_STATUS_LABELS.reviewed}</option>
                         <option value="approved">อนุมัติแล้ว</option>
                         <option value="rejected">ไม่อนุมัติ</option>
                       </select>

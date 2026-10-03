@@ -96,12 +96,13 @@ export async function GET(req: NextRequest) {
     });
 
     // Calculate counts in memory (faster than 8 DB queries)
-    let pending = 0, approved = 0, rejected = 0;
+    let pending = 0, reviewed = 0, approved = 0, rejected = 0;
     let sick = 0, personal = 0, maternity = 0, religious = 0, other = 0;
 
     for (const leave of allLeaves) {
       // Count by status
       if (leave.status === 'pending') pending++;
+      else if (leave.status === 'reviewed') reviewed++;
       else if (leave.status === 'approved') approved++;
       else if (leave.status === 'rejected') rejected++;
 
@@ -116,6 +117,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       byStatus: {
         pending,
+        reviewed,
         approved,
         rejected,
         total: allLeaves.length,

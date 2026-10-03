@@ -33,6 +33,7 @@ import {
 } from '@/types/leave';
 import EditLeaveDialog from '@/components/EditLeaveDialog';
 import CancelLeaveDialog from '@/components/CancelLeaveDialog';
+import type { HrRole } from '@/lib/roles';
 
 interface LeaveDetailClientProps {
   leaveId: string;
@@ -40,7 +41,7 @@ interface LeaveDetailClientProps {
     id: string;
     firstName: string;
     lastName: string;
-    role: 'hr' | 'super_admin';
+    role: HrRole;
   };
 }
 
@@ -60,6 +61,7 @@ interface LeaveDetail {
   contactPhone?: string;
   status: LeaveStatus;
   rejectionReason?: string;
+  rejectionStage?: 'review' | 'approval' | null;
   submittedByType: 'teacher' | 'hr';
   submittedByHr?: {
     firstName: string;
@@ -514,7 +516,11 @@ export default function LeaveDetailClient({
               <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
                 <h2 className="text-xs font-semibold text-red-900 dark:text-red-100 mb-1.5">
-                  เหตุผลที่ไม่อนุมัติ
+                  {leave.rejectionStage === 'review'
+                    ? 'เหตุผลที่ตีกลับ (ขั้นตรวจสอบโดย HR)'
+                    : leave.rejectionStage === 'approval'
+                    ? 'เหตุผลที่ไม่อนุมัติ (ขั้นอนุมัติโดย ผอ.)'
+                    : 'เหตุผลที่ไม่อนุมัติ'}
                 </h2>
                 <p className="text-sm text-red-700 dark:text-red-300">
                   {leave.rejectionReason}

@@ -14,7 +14,7 @@ export interface HrSession {
   username: string;
   firstName: string;
   lastName: string;
-  role: 'hr' | 'super_admin';
+  role: 'hr' | 'director' | 'super_admin';
   createdAt: number;
 }
 

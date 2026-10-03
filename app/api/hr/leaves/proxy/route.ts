@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
     const overlapping = await prisma.leave.findFirst({
       where: {
         teacherId,
-        status: { in: ['pending', 'approved'] },
+        status: { in: ['pending', 'reviewed', 'approved'] },
         AND: [
           { startDate: { lte: new Date(endDateStr + 'T00:00:00.000Z') } },   // existing start <= new end
           { endDate: { gte: new Date(startDateStr + 'T00:00:00.000Z') } },   // existing end >= new start

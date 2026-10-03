@@ -17,13 +17,14 @@ import { toast } from 'sonner';
 import { formatThaiDate } from '@/lib/thaiDate';
 import HrLayoutWrapper from '@/components/hr/HrLayoutWrapper';
 import Tooltip from '@/components/ui/Tooltip';
+import type { HrRole } from '@/lib/roles';
 
 interface HolidaysClientProps {
   hrUser: {
     id: string;
     firstName: string;
     lastName: string;
-    role: 'hr' | 'super_admin';
+    role: HrRole;
   };
 }
 

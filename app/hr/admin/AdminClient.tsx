@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import HrLayoutWrapper from '@/components/hr/HrLayoutWrapper';
+import type { HrRole, AuditUserType } from '@/lib/roles';
 import { formatThaiDateShort, formatFullThaiDate } from '@/lib/thaiDate';
 
 interface AdminClientProps {
@@ -49,7 +50,7 @@ interface HrUser {
   username: string;
   firstName: string;
   lastName: string;
-  role: 'hr' | 'super_admin';
+  role: HrRole;
   isActive: boolean;
   lastLoginAt: string | null;
   createdAt: string;
@@ -84,7 +85,7 @@ interface SystemStatus {
 interface AuditLog {
   id: string;
   userId: string;
-  userType: 'hr' | 'teacher';
+  userType: AuditUserType;
   action: string;
   resource: string;
   resourceId: string | null;
@@ -99,7 +100,6 @@ type Tab = 'users' | 'status' | 'audit' | 'danger';
 export default function AdminClient({ hrUser }: AdminClientProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('users');
-  const [pendingCount, setPendingCount] = useState(0);
 
   // Users state
   const [users, setUsers] = useState<HrUser[]>([]);
@@ -138,7 +138,7 @@ export default function AdminClient({ hrUser }: AdminClientProps) {
     password: '',
     firstName: '',
     lastName: '',
-    role: 'hr' as 'hr' | 'super_admin',
+    role: 'hr' as HrRole,
   });
 
   const [resetPasswordForm, setResetPasswordForm] = useState({
@@ -149,23 +149,10 @@ export default function AdminClient({ hrUser }: AdminClientProps) {
   const [showResetPassword, setShowResetPassword] = useState(false);
 
   useEffect(() => {
-    fetchPendingCount();
     if (activeTab === 'users') fetchUsers();
     if (activeTab === 'status') fetchSystemStatus();
     if (activeTab === 'audit') fetchAuditLogs();
   }, [activeTab]);
-
-  const fetchPendingCount = async () => {
-    try {
-      const response = await fetch('/api/hr/leaves/pendingCount');
-      if (response.ok) {
-        const data = await response.json();
-        setPendingCount(data.count);
-      }
-    } catch (error) {
-      console.error('Failed to fetch pending count:', error);
-    }
-  };
 
   const fetchUsers = async () => {
     try {
@@ -474,7 +461,6 @@ export default function AdminClient({ hrUser }: AdminClientProps) {
         lastName: hrUser.lastName,
         role: hrUser.role,
       }}
-      pendingCount={pendingCount}
     >
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
         {/* Header */}
@@ -594,10 +580,12 @@ export default function AdminClient({ hrUser }: AdminClientProps) {
                               className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                                 user.role === 'super_admin'
                                   ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                                  : user.role === 'director'
+                                  ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
                                   : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                               }`}
                             >
-                              {user.role === 'super_admin' ? 'Super Admin' : 'HR'}
+                              {user.role === 'super_admin' ? 'Super Admin' : user.role === 'director' ? 'ผู้อำนวยการ' : 'HR'}
                             </span>
                             {!user.isActive && (
                               <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
@@ -905,6 +893,8 @@ export default function AdminClient({ hrUser }: AdminClientProps) {
                     >
                       <option value="">ทุก User Type</option>
                       <option value="hr">HR</option>
+                      <option value="director">ผู้อำนวยการ</option>
+                      <option value="super_admin">Super Admin</option>
                       <option value="teacher">Teacher</option>
                     </select>
                     <input
@@ -1220,11 +1210,12 @@ export default function AdminClient({ hrUser }: AdminClientProps) {
                     </label>
                     <select
                       value={userForm.role}
-                      onChange={(e) => setUserForm({ ...userForm, role: e.target.value as 'hr' | 'super_admin' })}
+                      onChange={(e) => setUserForm({ ...userForm, role: e.target.value as HrRole })}
                       className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
                       required
                     >
                       <option value="hr">HR</option>
+                      <option value="director">ผู้อำนวยการ</option>
                       <option value="super_admin">Super Admin</option>
                     </select>
                   </div>
@@ -1339,11 +1330,12 @@ export default function AdminClient({ hrUser }: AdminClientProps) {
                     </label>
                     <select
                       value={editingUser.role}
-                      onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value as 'hr' | 'super_admin' })}
+                      onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value as HrRole })}
                       className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
                       required
                     >
                       <option value="hr">HR</option>
+                      <option value="director">ผู้อำนวยการ</option>
                       <option value="super_admin">Super Admin</option>
                     </select>
                   </div>

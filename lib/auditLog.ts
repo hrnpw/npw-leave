@@ -1,8 +1,9 @@
 import { prisma } from '@/lib/prisma';
+import type { AuditUserType } from '@/lib/roles';
 
 export interface AuditLogParams {
   userId?: string | null;
-  userType: 'hr' | 'teacher' | 'system';
+  userType: AuditUserType;
   action: string;
   resource: string;
   resourceId?: string;
@@ -41,6 +42,8 @@ export async function createAuditLog(params: AuditLogParams): Promise<void> {
 export const AuditActions = {
   // Leave operations
   CREATE_LEAVE: 'CREATE_LEAVE',
+  REVIEW_LEAVE: 'REVIEW_LEAVE',
+  RECALL_REVIEW: 'RECALL_REVIEW',
   APPROVE_LEAVE: 'APPROVE_LEAVE',
   REJECT_LEAVE: 'REJECT_LEAVE',
   DELETE_LEAVE: 'DELETE_LEAVE',

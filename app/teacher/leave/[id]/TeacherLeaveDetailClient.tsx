@@ -186,7 +186,7 @@ export default function TeacherLeaveDetailClient({
       ? leave.customTypeName
       : LEAVE_TYPE_LABELS[leave.type];
 
-  const canCancel = leave.status === 'pending' || leave.status === 'approved';
+  const canCancel = leave.status === 'pending';
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
@@ -225,7 +225,7 @@ export default function TeacherLeaveDetailClient({
             <span
               className={`px-3 py-1.5 text-sm rounded-lg border flex items-center gap-1.5 ${statusColors.light} ${statusColors.dark}`}
             >
-              {leave.status === 'pending' && (
+              {(leave.status === 'pending' || leave.status === 'reviewed') && (
                 <Clock className="w-4 h-4" />
               )}
               {leave.status === 'approved' && (

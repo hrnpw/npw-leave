@@ -14,10 +14,11 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import HrLayoutWrapper from '@/components/hr/HrLayoutWrapper';
+import type { HrRole } from '@/lib/roles';
 
 interface ReportsClientProps {
   user: {
-    role: 'hr' | 'super_admin';
+    role: HrRole;
   };
 }
 

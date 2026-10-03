@@ -1,8 +1,9 @@
 import { prisma } from '@/lib/prisma';
+import type { AuditUserType } from '@/lib/roles';
 
 interface AuditLogData {
   userId?: string;
-  userType: 'hr' | 'super_admin' | 'system';
+  userType: AuditUserType;
   action: string;
   resource: string;
   resourceId?: string;

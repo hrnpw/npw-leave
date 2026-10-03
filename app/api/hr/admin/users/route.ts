@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!['hr', 'super_admin'].includes(role)) {
+    if (!['hr', 'director', 'super_admin'].includes(role)) {
       return NextResponse.json({ error: 'บทบาทไม่ถูกต้อง' }, { status: 400 });
     }
 

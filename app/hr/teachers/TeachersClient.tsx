@@ -25,13 +25,15 @@ import {
 import { toast } from 'sonner';
 import HrLayoutWrapper from '@/components/hr/HrLayoutWrapper';
 import Tooltip from '@/components/ui/Tooltip';
+import type { HrRole } from '@/lib/roles';
+import { LEAVE_STATUS_LABELS, LEAVE_STATUS_COLORS, type LeaveStatus } from '@/types/leave';
 
 interface TeachersClientProps {
   hrUser: {
     id: string;
     firstName: string;
     lastName: string;
-    role: 'hr' | 'super_admin';
+    role: HrRole;
   };
 }
 
@@ -977,23 +979,9 @@ export default function TeachersClient({ hrUser }: TeachersClientProps) {
                                 {leave.leaveNo}
                               </span>
                               <span
-                                className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                                  leave.status === 'approved'
-                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-                                    : leave.status === 'rejected'
-                                    ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
-                                    : leave.status === 'reviewed'
-                                    ? 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300'
-                                    : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
-                                }`}
+                                className={`px-2 py-0.5 text-xs font-medium rounded-full border ${LEAVE_STATUS_COLORS[leave.status as LeaveStatus].light} ${LEAVE_STATUS_COLORS[leave.status as LeaveStatus].dark}`}
                               >
-                                {leave.status === 'approved'
-                                  ? 'อนุมัติ'
-                                  : leave.status === 'rejected'
-                                  ? 'ไม่อนุมัติ'
-                                  : leave.status === 'reviewed'
-                                  ? 'รออนุมัติ'
-                                  : 'รอตรวจสอบ'}
+                                {LEAVE_STATUS_LABELS[leave.status as LeaveStatus]}
                               </span>
                             </div>
                             <p className="text-sm text-slate-600 dark:text-slate-400">

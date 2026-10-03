@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { after } from 'next/server';
 import { getHrSession } from '@/lib/getSession';
 import { prisma } from '@/lib/prisma';
+import { checkTransition } from '@/lib/leaveWorkflow';
 import { createAuditLog } from '@/lib/audit/logger';
 import { sendPushToTeacher } from '@/lib/push/send';
 
@@ -16,7 +17,7 @@ export async function POST(
       params,
     ]);
 
-    if (!session.id) {
+    if (!session.id || !session.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -55,11 +56,10 @@ export async function POST(
       return NextResponse.json({ error: 'ไม่พบใบลา' }, { status: 404 });
     }
 
-    if (leave.status !== 'pending') {
-      return NextResponse.json(
-        { error: 'สามารถอนุมัติได้เฉพาะใบลาที่รออนุมัติเท่านั้น' },
-        { status: 400 }
-      );
+    const check = checkTransition('approve', leave.status, session.role);
+    if (!check.ok) {
+      const status = check.code === 'FORBIDDEN' ? 403 : 400;
+      return NextResponse.json({ error: check.error }, { status });
     }
 
     // Step 3: Fetch both signatories in parallel (only if they exist)
@@ -103,12 +103,13 @@ export async function POST(
         }
       : null;
 
-    // Step 4: Update leave status (no need to include data we already have)
-    await prisma.leave.update({
-      where: { id: leaveId },
+    // Step 4: Update leave status (conditional on current status to prevent double-approve)
+    const updateResult = await prisma.leave.updateMany({
+      where: { id: leaveId, status: leave.status },
       data: {
-        status: 'approved',
+        status: check.toStatus,
         approvedAt: new Date(),
+        approvedById: session.id,
         approverNameSnapshot: approverSnapshot?.name,
         approverPositionSnapshot: approverSnapshot?.position,
         directorNameSnapshot: directorSnapshot?.name,
@@ -116,10 +117,17 @@ export async function POST(
       },
     });
 
+    if (updateResult.count === 0) {
+      return NextResponse.json(
+        { error: 'ใบลานี้ถูกเปลี่ยนสถานะไปแล้ว กรุณารีเฟรชหน้า' },
+        { status: 409 }
+      );
+    }
+
     // Step 5: Audit log (fire-and-forget - don't block response)
     createAuditLog({
       userId: session.id,
-      userType: 'hr',
+      userType: session.role,
       action: 'APPROVE_LEAVE',
       resource: 'leaves',
       resourceId: leave.id,
@@ -133,6 +141,7 @@ export async function POST(
         daysWorking: leave.daysWorking,
         daysCalendar: leave.daysCalendar,
         pdfGenerationTriggered: true,
+        stage: 'approval',
       },
       ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined,
       userAgent: request.headers.get('user-agent') || undefined,

@@ -24,7 +24,8 @@ interface LeaveVerification {
   type: string;
   dateRange: string;
   daysWorking: number;
-  status: string;
+  status: string; // ป้ายภาษาไทย
+  statusCode: string;
   submittedAt: string;
   approvedAt: string | null;
 }
@@ -66,17 +67,17 @@ export default function CheckLeavePage() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    if (status.includes('อนุมัติแล้ว')) return 'text-green-600 bg-green-50 border-green-200';
-    if (status.includes('ไม่อนุมัติ')) return 'text-red-600 bg-red-50 border-red-200';
+  const getStatusColor = (statusCode: string) => {
+    if (statusCode === 'approved') return 'text-green-600 bg-green-50 border-green-200';
+    if (statusCode === 'rejected') return 'text-red-600 bg-red-50 border-red-200';
+    if (statusCode === 'cancelled') return 'text-slate-600 bg-slate-50 border-slate-200';
     return 'text-amber-600 bg-amber-50 border-amber-200';
   };
 
-  const getStatusIcon = (status: string) => {
-    if (status.includes('อนุมัติแล้ว'))
-      return <CheckCircle2 className="w-8 h-8 text-green-600" />;
-    if (status.includes('ไม่อนุมัติ'))
-      return <XCircle className="w-8 h-8 text-red-600" />;
+  const getStatusIcon = (statusCode: string) => {
+    if (statusCode === 'approved') return <CheckCircle2 className="w-8 h-8 text-green-600" />;
+    if (statusCode === 'rejected' || statusCode === 'cancelled')
+      return <XCircle className={`w-8 h-8 ${statusCode === 'rejected' ? 'text-red-600' : 'text-slate-500'}`} />;
     return <Clock className="w-8 h-8 text-amber-600" />;
   };
 
@@ -144,9 +145,9 @@ export default function CheckLeavePage() {
           </div>
 
           {/* Status Card */}
-          <div className={`border rounded-2xl p-6 ${getStatusColor(leave.status)}`}>
+          <div className={`border rounded-2xl p-6 ${getStatusColor(leave.statusCode)}`}>
             <div className="flex items-center gap-4">
-              {getStatusIcon(leave.status)}
+              {getStatusIcon(leave.statusCode)}
               <div className="flex-1">
                 <div className="text-sm opacity-75 mb-1">สถานะ</div>
                 <div className="text-lg font-bold">{leave.status}</div>

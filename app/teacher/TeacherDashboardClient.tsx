@@ -271,7 +271,7 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
   };
 
   // Count pending leaves for badge
-  const pendingCount = recentLeaves.filter(l => l.status === 'pending').length;
+  const pendingCount = recentLeaves.filter(l => l.status === 'pending' || l.status === 'reviewed').length;
 
   return (
     <>

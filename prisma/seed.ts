@@ -69,6 +69,26 @@ async function main() {
     console.log('⏭️  Skipped HR user (SEED_HR_PASSWORD not set)');
   }
 
+  // Create director test user (only when SEED_DIRECTOR_PASSWORD is set)
+  const directorPassword = process.env.SEED_DIRECTOR_PASSWORD;
+  if (directorPassword) {
+    const directorUser = await prisma.hrUser.upsert({
+      where: { username: 'director001' },
+      update: {},
+      create: {
+        username: 'director001',
+        passwordHash: hashPassword(directorPassword),
+        firstName: 'สมศักดิ์',
+        lastName: 'ผู้นำ',
+        role: 'director',
+        isActive: true,
+      },
+    });
+    console.log('✅ Created director user:', directorUser.username);
+  } else {
+    console.log('⏭️  Skipped director user (SEED_DIRECTOR_PASSWORD not set)');
+  }
+
   // Create sample teachers
   const teachers = await Promise.all([
     prisma.teacher.upsert({

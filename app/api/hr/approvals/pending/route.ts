@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     const [leaves, total] = await Promise.all([
       prisma.leave.findMany({
         where: {
-          status: 'pending',
+          status: 'reviewed',
         },
         orderBy: {
           createdAt: 'asc', // Oldest first (waiting longest)
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
       }),
       prisma.leave.count({
         where: {
-          status: 'pending',
+          status: 'reviewed',
         },
       }),
     ]);
@@ -145,7 +145,7 @@ export async function GET(request: NextRequest) {
     const allTeacherLeaves = await prisma.leave.findMany({
       where: {
         teacherId: { in: teacherIds },
-        status: { in: ['approved', 'pending'] },
+        status: { in: ['approved', 'reviewed', 'pending'] },
         startDate: { gte: minDate, lte: maxDate },
       },
       select: {

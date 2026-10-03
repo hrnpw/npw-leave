@@ -9,7 +9,8 @@ export async function POST(
 ) {
   try {
     const session = await getHrSession();
-    if (!session.id) {
+    const role = session.role;
+    if (!session.id || !role) {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 401 });
     }
 
@@ -61,7 +62,7 @@ export async function POST(
       await tx.auditLog.create({
         data: {
           userId: session.id,
-          userType: session.role === 'super_admin' ? 'super_admin' : 'hr',
+          userType: role,
           action: 'LEAVE_CANCEL_APPROVED',
           resource: 'leave',
           resourceId: id,

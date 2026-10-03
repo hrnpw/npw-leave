@@ -58,6 +58,7 @@ export default function TimelineSection({
       case 'rejected':
         return <XCircle className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />;
       case 'pending':
+      case 'reviewed':
         return <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />;
       default:
         return <AlertCircle className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />;
@@ -71,6 +72,7 @@ export default function TimelineSection({
       case 'rejected':
         return 'border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/30';
       case 'pending':
+      case 'reviewed':
         return 'border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/30';
       default:
         return 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30';

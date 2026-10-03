@@ -15,13 +15,14 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import type { HrRole } from '@/lib/roles';
 
 interface ImportClientProps {
   hrUser: {
     id: string;
     firstName: string;
     lastName: string;
-    role: 'hr' | 'super_admin';
+    role: HrRole;
   };
 }
 

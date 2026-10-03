@@ -26,7 +26,7 @@ export async function GET() {
     const timelineLeaves = await prisma.leave.findMany({
       where: {
         teacherId,
-        status: { in: ['pending', 'approved', 'rejected'] },
+        status: { in: ['pending', 'reviewed', 'approved', 'rejected'] },
         startDate: { gte: period.startDate, lte: period.endDate },
       },
       select: {

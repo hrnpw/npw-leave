@@ -8,17 +8,20 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getHrSession();
 
-    if (!session.id) {
+    if (!session.id || !session.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const count = await prisma.leave.count({
-      where: {
-        status: 'pending',
-      },
-    });
+    // pending = รอ HR ตรวจ, reviewed = รอ ผอ. อนุมัติ
+    const [pending, reviewed] = await Promise.all([
+      prisma.leave.count({ where: { status: 'pending' } }),
+      prisma.leave.count({ where: { status: 'reviewed' } }),
+    ]);
 
-    return NextResponse.json({ count });
+    // count = ยอดหลักตาม role (ผอ. ใช้ reviewed ส่วน hr/super_admin ใช้ pending)
+    const count = session.role === 'director' ? reviewed : pending;
+
+    return NextResponse.json({ count, pending, reviewed });
   } catch (error) {
     console.error('Failed to fetch pending count:', error);
     return NextResponse.json(

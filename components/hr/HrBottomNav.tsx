@@ -3,14 +3,19 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, ClipboardCheck, FileText, Menu } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { primaryLeaveQueue, type HrRole } from '@/lib/roles';
+import type { LeaveQueueCounts } from './HrLayoutWrapper';
 
 interface HrBottomNavProps {
-  pendingCount?: number;
+  role: HrRole;
+  counts: LeaveQueueCounts;
 }
 
-export default function HrBottomNav({ pendingCount = 0 }: HrBottomNavProps) {
+export default function HrBottomNav({ role, counts }: HrBottomNavProps) {
   const pathname = usePathname();
+  // ช่องเดียว: hr/super_admin -> หน้าตรวจ, ผอ. -> หน้าอนุมัติ
+  const queue = primaryLeaveQueue(role);
+  const queueCount = counts[queue.countKey];
 
   const navItems = [
     {
@@ -20,11 +25,11 @@ export default function HrBottomNav({ pendingCount = 0 }: HrBottomNavProps) {
       active: pathname === '/hr/dashboard',
     },
     {
-      href: '/hr/approvals',
-      label: 'รออนุมัติ',
+      href: queue.href,
+      label: queue.label,
       icon: ClipboardCheck,
-      active: pathname === '/hr/approvals',
-      badge: pendingCount > 0 ? pendingCount : undefined,
+      active: pathname === '/hr/reviews' || pathname === '/hr/approvals',
+      badge: queueCount > 0 ? queueCount : undefined,
     },
     {
       href: '/hr/leaves',

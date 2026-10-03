@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       where: {
         teacherId: session.id,
         status: {
-          in: ['approved', 'pending'],
+          in: ['approved', 'reviewed', 'pending'],
         },
         AND: [
           { startDate: { lte: currentPeriod.endDate } },

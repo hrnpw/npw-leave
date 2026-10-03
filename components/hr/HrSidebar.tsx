@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   ClipboardCheck,
+  ClipboardList,
   FileText,
   FilePlus,
   Users,
@@ -17,21 +18,33 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  type LucideIcon,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { canReview, canApprove, hrRoleLabel, type HrRole } from '@/lib/roles';
+import type { LeaveQueueCounts } from './HrLayoutWrapper';
+
+interface NavItem {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  iconColor?: string;
+  active: boolean;
+  badge?: number;
+}
 
 interface HrSidebarProps {
   hrUser: {
     id: string;
     firstName: string;
     lastName: string;
-    role: 'hr' | 'super_admin';
+    role: HrRole;
   };
-  pendingCount?: number;
+  counts: LeaveQueueCounts;
 }
 
-export default function HrSidebar({ hrUser, pendingCount = 0 }: HrSidebarProps) {
+export default function HrSidebar({ hrUser, counts }: HrSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
@@ -46,7 +59,27 @@ export default function HrSidebar({ hrUser, pendingCount = 0 }: HrSidebarProps) 
     }
   };
 
-  const navSections = [
+  // เมนูตรวจ/อนุมัติ: เมนูที่ role นั้นทำงานได้ขึ้นก่อน อีกเมนูดูได้อย่างเดียว
+  const reviewItem: NavItem = {
+    href: '/hr/reviews',
+    label: canReview(hrUser.role) ? 'ตรวจใบลา' : 'ตรวจใบลา (ดูอย่างเดียว)',
+    icon: ClipboardList,
+    iconColor: 'text-orange-500',
+    active: pathname === '/hr/reviews',
+    badge: counts.pending,
+  };
+  const approvalItem: NavItem = {
+    href: '/hr/approvals',
+    label: canApprove(hrUser.role) ? 'อนุมัติใบลา' : 'อนุมัติใบลา (ดูอย่างเดียว)',
+    icon: ClipboardCheck,
+    iconColor: 'text-sky-500',
+    active: pathname === '/hr/approvals',
+    badge: counts.reviewed,
+  };
+  const queueItems =
+    hrUser.role === 'director' ? [approvalItem, reviewItem] : [reviewItem, approvalItem];
+
+  const navSections: Array<{ label: string; items: NavItem[] }> = [
     {
       label: 'หลัก',
       items: [
@@ -57,14 +90,7 @@ export default function HrSidebar({ hrUser, pendingCount = 0 }: HrSidebarProps) 
           iconColor: 'text-blue-500',
           active: pathname === '/hr/dashboard',
         },
-        {
-          href: '/hr/approvals',
-          label: 'รออนุมัติ',
-          icon: ClipboardCheck,
-          iconColor: 'text-orange-500',
-          active: pathname === '/hr/approvals',
-          badge: pendingCount,
-        },
+        ...queueItems,
         {
           href: '/hr/leaves',
           label: 'ใบลาทั้งหมด',
@@ -166,7 +192,7 @@ export default function HrSidebar({ hrUser, pendingCount = 0 }: HrSidebarProps) 
               {hrUser.firstName} {hrUser.lastName}
             </h2>
             <p className="text-xs text-slate-600 dark:text-slate-400">
-              {hrUser.role === 'super_admin' ? 'ผู้ดูแลระบบ' : 'เจ้าหน้าที่ HR'}
+              {hrRoleLabel(hrUser.role)}
             </p>
           </div>
         )}
@@ -211,7 +237,7 @@ export default function HrSidebar({ hrUser, pendingCount = 0 }: HrSidebarProps) 
                     title={collapsed ? item.label : undefined}
                   >
                     <div className="relative">
-                      <Icon className={`w-5 h-5 shrink-0 ${(item as any).iconColor || ''}`} />
+                      <Icon className={`w-5 h-5 shrink-0 ${item.iconColor || ''}`} />
                       {item.badge !== undefined && item.badge > 0 && (
                         <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse-fast">
                           {item.badge > 99 ? '99+' : item.badge}

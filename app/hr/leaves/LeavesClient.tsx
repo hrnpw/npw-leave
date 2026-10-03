@@ -34,6 +34,7 @@ import {
 } from '@/types/leave';
 import HrLayoutWrapper from '@/components/hr/HrLayoutWrapper';
 import { formatThaiDateShort } from '@/lib/thaiDate';
+import type { HrRole } from '@/lib/roles';
 import {
   getCurrentFiscalYearAndRound,
   getRecentFiscalYears,
@@ -45,7 +46,7 @@ interface LeavesClientProps {
     id: string;
     firstName: string;
     lastName: string;
-    role: 'hr' | 'super_admin';
+    role: HrRole;
   };
 }
 
@@ -516,7 +517,7 @@ export default function LeavesClient({ hrUser }: LeavesClientProps) {
                   >
                     ทั้งหมด
                   </button>
-                  {(['pending', 'approved', 'rejected'] as LeaveStatus[]).map((s) => (
+                  {(['pending', 'reviewed', 'approved', 'rejected'] as LeaveStatus[]).map((s) => (
                     <button
                       key={s}
                       onClick={() => setStatus(s)}
@@ -630,14 +631,23 @@ export default function LeavesClient({ hrUser }: LeavesClientProps) {
       <main className="max-w-5xl mx-auto px-4 py-4">
         {/* Stats Summary */}
         {stats && (
-          <div className="mb-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="mb-4 grid grid-cols-3 sm:grid-cols-5 gap-2">
             <button
               onClick={() => applyFilters({ status: 'pending' })}
               className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-yellow-300 dark:hover:border-yellow-700 transition-colors text-left"
             >
-              <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">รออนุมัติ</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">{LEAVE_STATUS_LABELS.pending}</p>
               <p className="text-xl font-bold text-yellow-600 dark:text-yellow-400">
                 {stats.byStatus.pending}
+              </p>
+            </button>
+            <button
+              onClick={() => applyFilters({ status: 'reviewed' })}
+              className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-sky-300 dark:hover:border-sky-700 transition-colors text-left"
+            >
+              <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">{LEAVE_STATUS_LABELS.reviewed}</p>
+              <p className="text-xl font-bold text-sky-600 dark:text-sky-400">
+                {stats.byStatus.reviewed}
               </p>
             </button>
             <button

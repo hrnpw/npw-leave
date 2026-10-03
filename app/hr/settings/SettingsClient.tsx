@@ -15,13 +15,14 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import HrLayoutWrapper from '@/components/hr/HrLayoutWrapper';
+import type { HrRole } from '@/lib/roles';
 
 interface SettingsClientProps {
   hrUser: {
     id: string;
     firstName: string;
     lastName: string;
-    role: 'hr' | 'super_admin';
+    role: HrRole;
   };
 }
 
@@ -77,7 +78,6 @@ export default function SettingsClient({ hrUser }: SettingsClientProps) {
     telegramChatId: '',
   });
 
-  const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     fetchData();
@@ -86,10 +86,9 @@ export default function SettingsClient({ hrUser }: SettingsClientProps) {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [settingsRes, signatoriesRes, pendingRes] = await Promise.all([
+      const [settingsRes, signatoriesRes] = await Promise.all([
         fetch('/api/hr/settings'),
         fetch('/api/hr/signatories'),
-        fetch('/api/hr/leaves/pendingCount'),
       ]);
 
       if (settingsRes.ok) {
@@ -113,11 +112,6 @@ export default function SettingsClient({ hrUser }: SettingsClientProps) {
       if (signatoriesRes.ok) {
         const data = await signatoriesRes.json();
         setSignatories(data.signatories.filter((s: Signatory) => s.isActive));
-      }
-
-      if (pendingRes.ok) {
-        const data = await pendingRes.json();
-        setPendingCount(data.count);
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -249,7 +243,6 @@ export default function SettingsClient({ hrUser }: SettingsClientProps) {
           role: hrUser.role,
           createdAt: Date.now(),
         }}
-        pendingCount={pendingCount}
       >
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
           <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
@@ -281,7 +274,6 @@ export default function SettingsClient({ hrUser }: SettingsClientProps) {
         role: hrUser.role,
         createdAt: Date.now(),
       }}
-      pendingCount={pendingCount}
     >
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
         {/* Header */}

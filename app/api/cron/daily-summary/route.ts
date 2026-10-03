@@ -86,10 +86,11 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Get pending count
-    const pendingCount = await prisma.leave.count({
-      where: { status: 'pending' },
-    });
+    // รอ HR ตรวจ (pending) และรอ ผอ. อนุมัติ (reviewed)
+    const [pendingCount, reviewedCount] = await Promise.all([
+      prisma.leave.count({ where: { status: 'pending' } }),
+      prisma.leave.count({ where: { status: 'reviewed' } }),
+    ]);
 
     // Get unprinted count
     const unprintedCount = await prisma.leave.count({
@@ -137,7 +138,8 @@ export async function GET(request: NextRequest) {
     }
 
     message += `📅 ลาพรุ่งนี้: ${leavesTomorrow} คน\n`;
-    message += `⏳ รออนุมัติ: ${pendingCount} ใบ\n`;
+    message += `⏳ รอตรวจสอบ: ${pendingCount} ใบ\n`;
+    message += `📝 รอ ผอ. อนุมัติ: ${reviewedCount} ใบ\n`;
 
     if (unprintedCount > 0) {
       message += `🖨 รอพิมพ์: ${unprintedCount} ใบ\n`;
@@ -159,6 +161,7 @@ export async function GET(request: NextRequest) {
         leavesToday: activeLeavesToday.length,
         leavesTomorrow,
         pendingCount,
+        reviewedCount,
         unprintedCount,
       },
     });

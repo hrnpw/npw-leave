@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getHrSession } from '@/lib/getSession';
 import { prisma } from '@/lib/prisma';
 import ExcelJS from 'exceljs';
+import { LEAVE_STATUS_LABELS } from '@/types/leave';
 
 export async function GET(request: NextRequest) {
   try {
@@ -54,6 +55,7 @@ export async function GET(request: NextRequest) {
     if (type) where.type = type;
 
     if (status === 'pending') where.status = 'pending';
+    else if (status === 'reviewed') where.status = 'reviewed';
     else if (status === 'approved') where.status = 'approved';
     else if (status === 'rejected') where.status = 'rejected';
 
@@ -127,7 +129,7 @@ export async function GET(request: NextRequest) {
           startDate: leave.startDate.toLocaleDateString('th-TH'),
           endDate: leave.endDate.toLocaleDateString('th-TH'),
           days: leave.daysWorking,
-          status: leave.status === 'pending' ? 'รออนุมัติ' : leave.status === 'approved' ? 'อนุมัติแล้ว' : leave.status === 'rejected' ? 'ไม่อนุมัติ' : 'ยกเลิก',
+          status: LEAVE_STATUS_LABELS[leave.status],
           approver: leave.approverNameSnapshot || '-',
         });
       });

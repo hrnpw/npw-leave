@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       where: {
         teacherId: session.id,
         status: {
-          in: ['pending', 'approved'],
+          in: ['pending', 'reviewed', 'approved'],
         },
         ...(excludeLeaveId && { id: { not: excludeLeaveId } }),
         OR: [

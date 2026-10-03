@@ -26,6 +26,8 @@ import { CountUp } from '@/components/CountUp';
 import { formatFullThaiDate, formatThaiDate } from '@/lib/thaiDate';
 import HrLayoutWrapper from '@/components/hr/HrLayoutWrapper';
 import { format, addMonths, subMonths, startOfMonth, getDay } from 'date-fns';
+import { primaryLeaveQueue, type HrRole } from '@/lib/roles';
+import { LEAVE_STATUS_LABELS, LEAVE_STATUS_COLORS, type LeaveStatus } from '@/types/leave';
 
 interface HrDashboardClientProps {
   user: {
@@ -33,7 +35,7 @@ interface HrDashboardClientProps {
     username: string;
     firstName: string;
     lastName: string;
-    role: 'hr' | 'super_admin';
+    role: HrRole;
     createdAt: number;
   };
 }
@@ -44,6 +46,7 @@ interface DashboardSummary {
   leavesToday: number;
   leavesTomorrow: number;
   pendingCount: number;
+  reviewedCount: number;
   exceedingCount: number;
 }
 
@@ -90,6 +93,8 @@ interface HeatmapDay {
 
 export default function HrDashboardClient({ user }: HrDashboardClientProps) {
   const router = useRouter();
+  // คิวหลักตาม role: hr/super_admin = รอตรวจสอบ (pending), ผอ. = รออนุมัติ (reviewed)
+  const queue = primaryLeaveQueue(user.role);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -124,15 +129,15 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
   useEffect(() => {
     if (!loading && summary) {
       // Prefetch primary routes
-      router.prefetch('/hr/approvals');
+      router.prefetch(queue.href);
       router.prefetch('/hr/leaves');
 
       // Prefetch the API data for approvals (small, high-priority)
-      fetch('/api/hr/leaves?status=pending').catch(() => {
+      fetch(`/api/hr/leaves?status=${queue.countKey}`).catch(() => {
         // Silent fail - this is just prefetching
       });
     }
-  }, [loading, summary, router]);
+  }, [loading, summary, router, queue.href, queue.countKey]);
   
   // Intersection Observer for lazy loading heatmap
   useEffect(() => {
@@ -289,8 +294,14 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
     }
   };
 
+  const queueCount = summary
+    ? queue.countKey === 'pending'
+      ? summary.pendingCount
+      : summary.reviewedCount
+    : undefined;
+
   const menuItems = [
-    { icon: Clock, label: 'รออนุมัติ', href: '/hr/approvals', badge: summary?.pendingCount },
+    { icon: Clock, label: queue.label, href: queue.href, badge: queueCount },
     { icon: FileText, label: 'ใบลาทั้งหมด', href: '/hr/leaves' },
     { icon: UserPlus, label: 'ยื่นใบลาแทนครู', href: '/hr/leave/new' },
     { icon: Users, label: 'จัดการครู', href: '/hr/teachers' },
@@ -311,7 +322,6 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
         role: user.role,
         createdAt: user.createdAt,
       }}
-      pendingCount={summary?.pendingCount || 0}
     >
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20 lg:pb-4">
         {/* Header */}
@@ -394,7 +404,7 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
               onClick={async () => {
                 if (loading) return;
                 try {
-                  const res = await fetch('/api/hr/leaves?status=pending');
+                  const res = await fetch(`/api/hr/leaves?status=${queue.countKey}`);
                   const data = await res.json();
                   setModalData(data.leaves || []);
                   setModalType('pending');
@@ -409,7 +419,7 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                   <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                 </div>
                 <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                  รออนุมัติ
+                  {queue.label}
                 </h3>
               </div>
               <div className="text-3xl font-bold text-slate-900 dark:text-slate-100 leading-none flex items-center gap-2">
@@ -417,7 +427,7 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                   <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
                 ) : summary ? (
                   <>
-                    <CountUp end={summary.pendingCount} /> <span className="text-base text-slate-500 font-normal ml-1">ใบ</span>
+                    <CountUp end={queueCount ?? 0} /> <span className="text-base text-slate-500 font-normal ml-1">ใบ</span>
                   </>
                 ) : (
                   <span className="text-xl text-slate-400">-</span>
@@ -788,7 +798,7 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
               >
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                    {modalType === 'pending' && 'ใบลารออนุมัติ'}
+                    {modalType === 'pending' && `ใบลา${queue.label}`}
                     {modalType === 'today' && 'ครูที่ลาวันนี้'}
                     {modalType === 'tomorrow' && 'ครูที่ลาพรุ่งนี้'}
                   </h3>
@@ -826,18 +836,6 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                         other: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
                       };
 
-                      const statusColors: Record<string, string> = {
-                        pending: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-                        approved: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-                        rejected: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                      };
-
-                      const statusLabels: Record<string, string> = {
-                        pending: 'รออนุมัติ',
-                        approved: 'อนุมัติแล้ว',
-                        rejected: 'ไม่อนุมัติ'
-                      };
-
                       return (
                         <div
                           key={item.id}
@@ -868,8 +866,8 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                               {item.type === 'other' && item.customTypeName ? item.customTypeName : typeLabels[item.type]}
                             </span>
                             {modalType === 'pending' && (
-                              <span className={`px-1.5 py-0.5 text-xs rounded ${statusColors[item.status]}`}>
-                                {statusLabels[item.status]}
+                              <span className={`px-1.5 py-0.5 text-xs rounded border ${LEAVE_STATUS_COLORS[item.status as LeaveStatus].light} ${LEAVE_STATUS_COLORS[item.status as LeaveStatus].dark}`}>
+                                {LEAVE_STATUS_LABELS[item.status as LeaveStatus]}
                               </span>
                             )}
                             {item.isHalfDay && (

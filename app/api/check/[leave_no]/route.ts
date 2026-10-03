@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
+import { LEAVE_STATUS_LABELS, type LeaveStatus } from '@/types/leave';
 
 const LEAVE_TYPE_NAMES: Record<string, string> = {
   sick: 'ลาป่วย',
@@ -11,11 +12,6 @@ const LEAVE_TYPE_NAMES: Record<string, string> = {
   other: 'อื่นๆ',
 };
 
-const STATUS_NAMES: Record<string, string> = {
-  pending: 'รออนุมัติ',
-  approved: 'อนุมัติแล้ว',
-  rejected: 'ไม่อนุมัติ',
-};
 
 function formatThaiDate(date: Date): string {
   return format(date, 'd MMMM yyyy', { locale: th }).replace(/\d{4}/, (year) =>
@@ -84,7 +80,8 @@ export async function GET(
       type: leaveTypeName,
       dateRange: `${formatThaiDate(leave.startDate)} ถึง ${formatThaiDate(leave.endDate)}${periodText}`,
       daysWorking: leave.daysWorking,
-      status: STATUS_NAMES[leave.status] || leave.status,
+      status: LEAVE_STATUS_LABELS[leave.status as LeaveStatus] ?? leave.status,
+      statusCode: leave.status,
       submittedAt: formatThaiDate(leave.createdAt),
       approvedAt: leave.approvedAt ? formatThaiDate(leave.approvedAt) : null,
     });

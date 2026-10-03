@@ -20,13 +20,14 @@ import LeaveTypeStep from '@/app/teacher/leave/new/steps/LeaveTypeStep';
 import DateRangeStep from '@/app/teacher/leave/new/steps/DateRangeStep';
 import DetailsStep from '@/app/teacher/leave/new/steps/DetailsStep';
 import HrLayoutWrapper from '@/components/hr/HrLayoutWrapper';
+import type { HrRole } from '@/lib/roles';
 
 interface HrProxyLeaveClientProps {
   hrUser: {
     id: string;
     firstName: string;
     lastName: string;
-    role: 'hr' | 'super_admin';
+    role: HrRole;
   };
 }
 

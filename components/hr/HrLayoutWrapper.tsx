@@ -4,6 +4,13 @@ import { ReactNode, useState, useEffect } from 'react';
 import HrSidebar from './HrSidebar';
 import HrBottomNav from './HrBottomNav';
 import { SessionWarning } from '@/components/SessionWarning';
+import type { HrRole } from '@/lib/roles';
+import { PENDING_COUNT_CHANGED_EVENT } from './leaveReview/api';
+
+export interface LeaveQueueCounts {
+  pending: number; // รอ HR ตรวจ
+  reviewed: number; // รอ ผอ. อนุมัติ
+}
 
 interface HrLayoutWrapperProps {
   children: ReactNode;
@@ -11,48 +18,37 @@ interface HrLayoutWrapperProps {
     id: string;
     firstName: string;
     lastName: string;
-    role: 'hr' | 'super_admin';
+    role: HrRole;
     createdAt?: number;
   };
-  pendingCount?: number;
 }
 
-export default function HrLayoutWrapper({
-  children,
-  hrUser,
-  pendingCount: initialCount,
-}: HrLayoutWrapperProps) {
-  const [pendingCount, setPendingCount] = useState(initialCount ?? 0);
-  const shouldFetch = initialCount === undefined;
+export default function HrLayoutWrapper({ children, hrUser }: HrLayoutWrapperProps) {
+  const [counts, setCounts] = useState<LeaveQueueCounts>({ pending: 0, reviewed: 0 });
 
-  // Sync with prop changes
+  // โหลดยอด badge ทุก 60 วินาที และทุกครั้งที่มีการเปลี่ยนสถานะใบลาในหน้านี้
   useEffect(() => {
-    if (initialCount !== undefined) {
-      setPendingCount(initialCount);
-    }
-  }, [initialCount]);
-
-  // Fetch pending count only if not provided by parent
-  useEffect(() => {
-    if (!shouldFetch) return;
-
-    const fetchPendingCount = async () => {
+    const fetchCounts = async () => {
       try {
         const res = await fetch('/api/hr/leaves/pendingCount');
         if (res.ok) {
           const data = await res.json();
-          setPendingCount(data.count || 0);
+          setCounts({ pending: data.pending || 0, reviewed: data.reviewed || 0 });
         }
       } catch (error) {
         console.error('Failed to fetch pending count:', error);
       }
     };
 
-    fetchPendingCount();
-    const interval = setInterval(fetchPendingCount, 60000);
+    fetchCounts();
+    const interval = setInterval(fetchCounts, 60000);
+    window.addEventListener(PENDING_COUNT_CHANGED_EVENT, fetchCounts);
 
-    return () => clearInterval(interval);
-  }, [shouldFetch]);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener(PENDING_COUNT_CHANGED_EVENT, fetchCounts);
+    };
+  }, []);
 
   return (
     <>
@@ -61,13 +57,13 @@ export default function HrLayoutWrapper({
       )}
 
       {/* Sidebar for desktop */}
-      <HrSidebar hrUser={hrUser} pendingCount={pendingCount} />
+      <HrSidebar hrUser={hrUser} counts={counts} />
 
       {/* Main content - offset by sidebar on desktop */}
       <div className="lg:pl-64">{children}</div>
 
       {/* Bottom nav for mobile */}
-      <HrBottomNav pendingCount={pendingCount} />
+      <HrBottomNav role={hrUser.role} counts={counts} />
     </>
   );
 }

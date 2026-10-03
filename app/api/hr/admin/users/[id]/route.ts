@@ -37,13 +37,13 @@ export async function PATCH(
     }
 
     // Validate role
-    if (role !== undefined && !['hr', 'super_admin'].includes(role)) {
+    if (role !== undefined && !['hr', 'director', 'super_admin'].includes(role)) {
       return NextResponse.json({ error: 'บทบาทไม่ถูกต้อง' }, { status: 400 });
     }
 
     // ตรวจสอบไม่ให้ super admin คนสุดท้ายถูกเปลี่ยน role หรือปิดใช้งาน
     if (oldUser.role === 'super_admin') {
-      if (role === 'hr' || isActive === false) {
+      if ((role !== undefined && role !== 'super_admin') || isActive === false) {
         const superAdminCount = await prisma.hrUser.count({
           where: { role: 'super_admin', isActive: true },
         });

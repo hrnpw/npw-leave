@@ -35,6 +35,7 @@ export async function GET(request: Request) {
       leavesTodayAll,
       leavesTomorrow,
       pendingCount,
+      reviewedCount,
       settings,
       leavesToday,
     ] = await Promise.all([
@@ -66,6 +67,9 @@ export async function GET(request: Request) {
       }),
       prisma.leave.count({
         where: { status: 'pending' },
+      }),
+      prisma.leave.count({
+        where: { status: 'reviewed' },
       }),
       prisma.settings.findUnique({
         where: { id: 'singleton' },
@@ -137,6 +141,7 @@ export async function GET(request: Request) {
       leavesToday: leavesTodayAll,
       leavesTomorrow,
       pendingCount,
+      reviewedCount,
       exceedingCount,
     };
 

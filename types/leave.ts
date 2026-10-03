@@ -1,5 +1,5 @@
 export type LeaveType = 'sick' | 'personal' | 'maternity' | 'religious' | 'other';
-export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+export type LeaveStatus = 'pending' | 'reviewed' | 'approved' | 'rejected' | 'cancelled';
 export type HalfDayPeriod = 'morning' | 'afternoon';
 
 export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
@@ -11,7 +11,8 @@ export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
 };
 
 export const LEAVE_STATUS_LABELS: Record<LeaveStatus, string> = {
-  pending: 'รออนุมัติ',
+  pending: 'รอตรวจสอบ',
+  reviewed: 'รอ ผอ. อนุมัติ',
   approved: 'อนุมัติแล้ว',
   rejected: 'ไม่อนุมัติ',
   cancelled: 'ยกเลิก',
@@ -56,6 +57,10 @@ export const LEAVE_STATUS_COLORS = {
   pending: {
     light: 'bg-amber-100 text-amber-700 border-amber-200',
     dark: 'dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800',
+  },
+  reviewed: {
+    light: 'bg-sky-100 text-sky-700 border-sky-200',
+    dark: 'dark:bg-sky-900/20 dark:text-sky-400 dark:border-sky-800',
   },
   approved: {
     light: 'bg-emerald-100 text-emerald-700 border-emerald-200',

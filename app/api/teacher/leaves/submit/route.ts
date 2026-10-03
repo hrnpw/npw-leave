@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
     const overlappingLeaves = await prisma.leave.findMany({
       where: {
         teacherId: session.id,
-        status: { in: ['pending', 'approved'] },
+        status: { in: ['pending', 'reviewed', 'approved'] },
         OR: [
           // Case 1: Existing leave starts within new range
           {

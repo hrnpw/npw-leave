@@ -46,7 +46,7 @@ export async function GET() {
       where: {
         teacherId: session.id,
         status: {
-          in: ['pending', 'approved', 'rejected'],
+          in: ['pending', 'reviewed', 'approved', 'rejected'],
         },
         startDate: {
           gte: startDate,

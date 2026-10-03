@@ -1,6 +1,7 @@
 # Plan: เพิ่ม role ผู้อำนวยการ + อนุมัติใบลา 2 ขั้น
 
-สถานะ: วาง plan เสร็จแล้ว ตั้ง Neon `dev` แล้ว ยังไม่เริ่มเขียนโค้ด
+สถานะ (2026-10-03): ทำข้อ 1-6 ใน "ลำดับการทำงาน" (ข้อ 9) เสร็จแล้ว tsc, vitest และ build ผ่าน ยังไม่ได้ทดสอบด้วยมือ ยังไม่ commit (ตั้งใจ commit ทีเดียวตอนโค้ดเสร็จ) ถัดไปคือข้อ 7 ทดสอบด้วยมือ
+- ไฟล์ migration `20261002164426_add_director_role_and_review_status` ยังเป็น untracked ห้ามลบหรือแก้
 
 ## Flow
 
@@ -49,8 +50,8 @@
 - ทำ audit logger ที่มีอยู่ 2 ไฟล์ให้ type ตรงกัน และรองรับ `director`
 
 สิ่งที่ ผอ. ใช้ได้
-- dashboard, อนุมัติใบลา, รายการใบลาทั้งหมด (ดูอย่างเดียว), รายงาน
-- ใช้ไม่ได้: จัดการครู, ตั้งค่า, signatories, admin, พิมพ์/ดาวน์โหลด PDF, ยื่นแทนครู, แก้ไขหรือยกเลิกใบลา
+- ทุกอย่างเหมือน hr (`canManage` รวม `director`) บวกกับหน้าอนุมัติใบลา
+- ใช้ไม่ได้: ตรวจใบลา (`canReview` คงไว้แค่ hr, super_admin เพื่อให้การอนุมัติ 2 ขั้นยังมีผล), หน้า admin และ danger zone (super_admin เท่านั้นเหมือนเดิม)
 
 ต้องปิดทั้งในเมนู UI และบล็อกที่ API (คืน 403) เพราะ `proxy.ts` ไม่ครอบ `/api/*`
 
@@ -69,7 +70,7 @@
 - รวม logic การเปลี่ยนสถานะไว้ที่ `lib/leaveWorkflow.ts` (state machine) แล้วให้ทุก route เรียกใช้ที่นี่
 - Audit log: `REVIEW_LEAVE`, `RECALL_REVIEW`, `REJECT_LEAVE` (ใส่ `details.stage = 'review' | 'approval'`), `APPROVE_LEAVE` และแก้ `userType` ให้มาจาก role จริง ไม่ hard-code
 - `admin/danger/revert-leave-status` ย้อนกลับเป็น pending แล้วล้าง `reviewedAt`, `reviewedById`, `approvedById` ด้วย
-- `api/hr/*` ที่เป็นงานจัดการ (teachers, settings, signatories, proxy, leaves edit/cancel, pdf) ต้องบล็อก `director`
+- `api/hr/admin/users` (สร้าง/แก้ user) รับ role `director`
 
 ## 4. Web push แจ้งครู
 | เหตุการณ์ | หัวข้อ | ข้อความ |
@@ -93,9 +94,23 @@
 - มีปุ่ม อนุมัติ / ไม่อนุมัติ
 - เอาปุ่มเลือกหลายใบแล้วอนุมัติทีเดียวออก (`ApprovalsClient.tsx:313`)
 
+สิทธิ์ดูข้ามหน้า (ตกลง 2026-10-03)
+- hr เข้า `/hr/approvals` ได้แต่ดูอย่างเดียว (ไม่มีปุ่มอนุมัติ/ไม่อนุมัติ)
+- director เข้า `/hr/reviews` ได้แต่ดูอย่างเดียว (ไม่มีปุ่มตรวจผ่าน/ตีกลับ/ดึงกลับ)
+- ดังนั้น `GET /api/hr/reviews/pending` ต้องให้ director อ่านได้ ส่วน POST ของ reviews และ approvals ยังคืน 403 ตามเดิม
+- ส่วนรายการที่ใช้ร่วมกัน (ค้นหา, กรอง, รายละเอียด, ไฟล์แนบ) แยกเป็น component กลาง แต่ละหน้าใส่ปุ่มของตัวเอง
+- ไม่มีปุ่มตรวจ/อนุมัติในหน้า `/hr/leaves/[id]`
+
 เมนูและ badge
 - `HrSidebar`, `HrBottomNav`, `HrMenuClient` แสดงเมนูตาม role และเพิ่ม label "ผู้อำนวยการ"
-- `HrLayoutWrapper` badge แสดงยอดตาม role
+- เมนู sidebar: hr เห็น "ตรวจใบลา" เป็นหลัก, director เห็น "อนุมัติใบลา" เป็นหลัก, ทั้งสองเห็นอีกหน้าในเมนูได้ (ดูอย่างเดียว), super_admin เห็นทั้งสองแบบใช้งานได้ แต่ละเมนูมี badge ของตัวเอง (ตรวจ = pending, อนุมัติ = reviewed) `pendingCount` ต้องคืนทั้งสองยอด
+- `HrBottomNav` ช่องเดียว: hr และ super_admin → `/hr/reviews` "รอตรวจสอบ", director → `/hr/approvals` "รออนุมัติ"
+- `HrLayoutWrapper` badge แสดงยอดตาม role (super_admin ใช้ยอด pending)
+- Dashboard quick action (`HrDashboardClient.tsx:294`) ลิงก์และยอดตาม role แบบเดียวกับ bottom nav
+
+ใบที่ rejected
+- ฝั่งครูแสดง "ไม่อนุมัติ" พร้อมเหตุผลเหมือนเดิม
+- ฝั่ง HR (`LeaveDetailClient`) แสดงว่าถูกตีกลับขั้นไหน โดยอ่านจาก audit `details.stage`
 
 ป้ายสถานะใน `types/leave.ts`
 - `pending` = รอตรวจสอบ
@@ -162,18 +177,18 @@ Telegram
 - ห้าม `git push` ระหว่างพัฒนา เพราะ Vercel deploy จาก GitHub ทันที ขณะที่ `production` ยังไม่ได้ migrate
 - Build script คงเดิม (`prisma generate && next build`) ไม่เพิ่ม `migrate deploy`
 - `prisma migrate dev` และ seed ใช้ได้กับ `dev` เท่านั้น ห้ามรัน `migrate dev` หรือ `db push` กับ `production`
-- รัน `prisma migrate dev` แล้ว commit โฟลเดอร์ migration ทันที
+- โฟลเดอร์ migration จาก `prisma migrate dev` commit พร้อมโค้ดทั้งหมดตอนพัฒนาเสร็จ (ก่อน `migrate deploy`)
 - Vercel เกี่ยวตอน push อย่างเดียว build script ไม่รัน migration จึงต้อง `migrate deploy` ใส่ `production` ก่อน push (ข้อ 11)
 - ใช้คอมเครื่องเดียว
 
 ## 9. ลำดับการทำงาน
-1. Schema, migration (`migrate dev` บน Neon `dev`) และ seed
-2. `lib/roles.ts`, `lib/leaveWorkflow.ts` พร้อม unit test
-3. นับ `reviewed` ในโควตา, การเช็ควันซ้อน และไทม์ไลน์ (ทำก่อน API เพื่อไม่ให้ทดสอบสับสน)
-4. API ฝั่ง review และ approval รวมถึง push
-5. บล็อก `director` ใน API ที่เป็นงานจัดการ
-6. UI: หน้า reviews/approvals, เมนู, ป้ายสถานะ, ตัวกรอง, Admin, ปุ่มยกเลิกของครู
-7. ทดสอบ (ข้อ 10)
+1. ✅ Schema, migration (`migrate dev` บน Neon `dev`) และ seed
+2. ✅ `lib/roles.ts`, `lib/leaveWorkflow.ts` พร้อม unit test
+3. ✅ นับ `reviewed` ในโควตา, การเช็ควันซ้อน และไทม์ไลน์ (ทำก่อน API เพื่อไม่ให้ทดสอบสับสน)
+4. ✅ API ฝั่ง review และ approval รวมถึง push (POST ของ reviews/approvals เช็คสิทธิ์คืน 403 ส่วน GET `reviews/pending` เปิดให้ทุก role ของ HR อ่านได้ ตามข้อตกลงดูข้ามหน้า)
+5. ✅ ให้ `director` ใช้งานจัดการได้เหมือน hr (`canManage`), แก้ `userType` ใน leaves edit/cancel ให้มาจาก role จริง, `admin/users` รับ role `director`
+6. ✅ UI: หน้า reviews/approvals, เมนู, ป้ายสถานะ, ตัวกรอง, Admin, ปุ่มยกเลิกของครู
+7. ✅ทดสอบ (ข้อ 10)
 8. Deploy (ข้อ 11)
 
 ## 10. การทดสอบ
@@ -185,7 +200,8 @@ Telegram
   - ผอ. ไม่อนุมัติ
   - HR ดึงกลับ
   - ครูยกเลิก (ทำได้เฉพาะ pending)
-  - ผอ. เปิดหน้าหรือเรียก API ที่ไม่มีสิทธิ์ (ต้องได้ 403 หรือถูก redirect)
+  - ผอ. เปิดหน้าตรวจใบลาได้แต่ไม่มีปุ่ม, POST `/api/hr/reviews/*` ต้องได้ 403, hr เปิดหน้าอนุมัติได้แต่ไม่มีปุ่ม, POST `/api/hr/approvals/*` ต้องได้ 403
+  - ผอ. เข้าหน้า admin หรือ danger zone (ต้องได้ 403 หรือถูก redirect)
   - โควตานับใบที่ reviewed ด้วย
   - กดซ้ำพร้อมกัน (ต้องได้ 409)
 

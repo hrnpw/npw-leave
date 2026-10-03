@@ -206,7 +206,8 @@ export default function LeaveHistoryClient({ teacher }: LeaveHistoryClientProps)
                   className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none"
                 >
                   <option value="">ทั้งหมด</option>
-                  <option value="pending">รออนุมัติ</option>
+                  <option value="pending">รอตรวจสอบ</option>
+                  <option value="reviewed">รอ ผอ. อนุมัติ</option>
                   <option value="approved">อนุมัติแล้ว</option>
                   <option value="rejected">ไม่อนุมัติ</option>
                   <option value="cancelled">ยกเลิก</option>
