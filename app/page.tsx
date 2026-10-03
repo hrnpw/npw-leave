@@ -13,7 +13,7 @@ import { LEAVE_TYPE_LABELS, LEAVE_TYPE_COLORS, HALF_DAY_PERIOD_LABELS } from '@/
 import type { LeaveType, HalfDayPeriod, LeaveStatus } from '@/types/leave';
 import { fetchCache } from '@/lib/fetchCache';
 import { LeaveStatusIcon, LeaveStatusIconLegend } from '@/components/LeaveStatusIcon';
-import { BottomSheet } from '@/components/BottomSheet';
+import { Modal } from '@/components/Modal';
 import { PullToRefreshIndicator } from '@/components/PullToRefreshIndicator';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 
@@ -461,7 +461,7 @@ export default function HomePage() {
         {/* Modal for day details */}
         <AnimatePresence>
           {selectedDate && (
-            <BottomSheet
+            <Modal
               key={selectedDate}
               title={formatFullThaiDate(new Date(selectedDate))}
               onClose={closeModal}
@@ -514,7 +514,7 @@ export default function HomePage() {
                   </div>
                 </>
               )}
-            </BottomSheet>
+            </Modal>
           )}
         </AnimatePresence>
       </motion.main>
