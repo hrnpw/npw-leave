@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { getTeacherSession } from '@/lib/getSession';
 import { prisma } from '@/lib/prisma';
 
-const MAX_SUBSCRIPTIONS_PER_TEACHER = 10;
+const MAX_SUBSCRIPTIONS_PER_TEACHER = 4;
 
 const subscribeSchema = z.object({
   endpoint: z.string().url().startsWith('https://').max(1000),

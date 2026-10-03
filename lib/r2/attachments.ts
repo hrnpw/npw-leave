@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { uploadToR2 } from '@/lib/r2/upload';
+import { uploadToR2, toKeySegment } from '@/lib/r2/upload';
 
 export const MAX_ATTACHMENTS_PER_LEAVE = 5;
 export const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
@@ -14,11 +14,6 @@ export class AttachmentError extends Error {
   constructor(message: string, public status: number) {
     super(message);
   }
-}
-
-// leaveNo looks like "LEAVE-69/1-0001"; a raw "/" would create nested folders in R2
-function toKeySegment(leaveNo: string) {
-  return leaveNo.replace(/[^A-Za-z0-9._-]+/g, '-');
 }
 
 export async function saveLeaveAttachment(

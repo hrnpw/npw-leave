@@ -90,9 +90,18 @@ export function extractR2Key(url: string): string {
   }
 }
 
+// leaveNo looks like "LEAVE-69/1-0001"; a raw "/" would create nested folders in R2
+export function toKeySegment(leaveNo: string): string {
+  return leaveNo.replace(/[^A-Za-z0-9._-]+/g, '-');
+}
+
+function getPdfKey(leaveNo: string, fiscalYear: number): string {
+  return `pdf/${fiscalYear}/${toKeySegment(leaveNo)}.pdf`;
+}
+
 /**
  * Upload PDF to R2 with fiscal year folder structure
- * @param leaveNo - Leave number (e.g., "LV-2570-0001")
+ * @param leaveNo - Leave number (e.g., "LEAVE-69/1-0001")
  * @param fiscalYear - Fiscal year (e.g., 2570)
  * @param pdfBuffer - PDF buffer
  * @returns R2 URL
@@ -102,21 +111,19 @@ export async function uploadPDFToR2(
   fiscalYear: number,
   pdfBuffer: Buffer
 ): Promise<string> {
-  const key = `pdf/${fiscalYear}/${leaveNo}.pdf`;
-  return uploadToR2(key, pdfBuffer, 'application/pdf');
+  return uploadToR2(getPdfKey(leaveNo, fiscalYear), pdfBuffer, 'application/pdf');
 }
 
 /**
  * Delete PDF from R2
- * @param leaveNo - Leave number (e.g., "LV-2570-0001")
+ * @param leaveNo - Leave number (e.g., "LEAVE-69/1-0001")
  * @param fiscalYear - Fiscal year (e.g., 2570)
  */
 export async function deletePDFFromR2(
   leaveNo: string,
   fiscalYear: number
 ): Promise<void> {
-  const key = `pdf/${fiscalYear}/${leaveNo}.pdf`;
-  await deleteFromR2(key);
+  await deleteFromR2(getPdfKey(leaveNo, fiscalYear));
 }
 
 /**

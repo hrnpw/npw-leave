@@ -5,6 +5,10 @@ import { prisma } from '@/lib/prisma';
 import { checkTransition } from '@/lib/leaveWorkflow';
 import { createAuditLog } from '@/lib/audit/logger';
 import { sendPushToTeacher } from '@/lib/push/send';
+import { generateAndStoreLeavePdf } from '@/lib/pdf/generateForLeave';
+
+export const maxDuration = 60;
+export const runtime = 'nodejs';
 
 export async function POST(
   request: NextRequest,
@@ -155,6 +159,12 @@ export async function POST(
         url: `/teacher/leaves/${leave.id}`,
         tag: `leave-${leave.id}`,
       })
+    );
+
+    after(() =>
+      generateAndStoreLeavePdf(leave.id).catch(err =>
+        console.error('[APPROVE] PDF generation failed (non-blocking):', err)
+      )
     );
 
     return NextResponse.json({

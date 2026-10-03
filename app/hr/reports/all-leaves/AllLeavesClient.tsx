@@ -461,7 +461,7 @@ export default function AllLeavesClient({ hrUser }: { hrUser: HrUser }) {
                                 <Eye className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                               </button>
                               <button
-                                onClick={() => window.open(`/api/pdf/${leave.id}`, '_blank')}
+                                onClick={() => window.open(`/api/hr/leaves/${leave.id}/pdf`, '_blank')}
                                 className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors"
                                 title="ดาวน์โหลด PDF"
                               >
