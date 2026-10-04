@@ -1,7 +1,7 @@
 # Leave-NPW Project
 
 ระบบยื่น/อนุมัติใบลาสำหรับโรงเรียน (Mobile Web App, Next.js + PWA)
-- เพิ่ม ผู้อำนวยการ(director) deploy แล้ว (2026-10-03) เหลือสร้างบัญชี ผอ. บน production
+- เพิ่ม ผู้อำนวยการ(director) deploy แล้ว (2026-10-03)
 
 
 *ใช้ภาษาไทยใยการสื่อสารกับ user

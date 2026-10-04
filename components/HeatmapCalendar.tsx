@@ -16,7 +16,21 @@ interface HeatmapCalendarProps {
   clickable?: boolean;
   className?: string;
   holidays?: Array<{ date: string; name: string }>; // วันหยุดราชการ
+  thresholds?: [number, number, number]; // ขอบบนของระดับสี 1-3 (ระดับ 4 = มากกว่าค่าสุดท้าย)
+  loading?: boolean;
 }
+
+const DEFAULT_THRESHOLDS: [number, number, number] = [2, 4, 6];
+
+const LEVEL_BG = [
+  'bg-slate-100 dark:bg-slate-800',
+  'bg-sky-200 dark:bg-sky-900/50',
+  'bg-sky-400 dark:bg-sky-700',
+  'bg-sky-600 dark:bg-sky-500',
+  'bg-sky-800 dark:bg-sky-400',
+];
+
+const LEVEL_DOT = ['', 'bg-sky-400', 'bg-sky-500', 'bg-sky-600', 'bg-sky-600'];
 
 const monthSlide: Variants = {
   enter: (direction: number) => ({ opacity: 0, x: direction * 24 }),
@@ -32,10 +46,13 @@ export function HeatmapCalendar({
   onMonthChange,
   clickable = true,
   className = '',
-  holidays = []
+  holidays = [],
+  thresholds = DEFAULT_THRESHOLDS,
+  loading = false
 }: HeatmapCalendarProps) {
-  const [currentMonth, setCurrentMonth] = useState(currentDate || new Date());
+  const [internalMonth, setInternalMonth] = useState(() => new Date());
   const [direction, setDirection] = useState(1);
+  const currentMonth = currentDate ?? internalMonth;
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -47,27 +64,22 @@ export function HeatmapCalendar({
   // Create holiday map for quick lookup
   const holidayMap = new Map(holidays.map(h => [h.date.split('T')[0], h.name]));
 
-  const getIntensity = (count: number): string => {
-    if (count === 0) return 'bg-slate-100 dark:bg-slate-800';
-    if (count <= 2) return 'bg-sky-200 dark:bg-sky-900/50';
-    if (count <= 4) return 'bg-sky-400 dark:bg-sky-700';
-    if (count <= 6) return 'bg-sky-600 dark:bg-sky-500';
-    return 'bg-sky-800 dark:bg-sky-400';
+  const getLevel = (count: number): number => {
+    if (count <= 0) return 0;
+    if (count <= thresholds[0]) return 1;
+    if (count <= thresholds[1]) return 2;
+    if (count <= thresholds[2]) return 3;
+    return 4;
   };
 
-  const handlePrevMonth = () => {
-    const newMonth = subMonths(currentMonth, 1);
-    setDirection(-1);
-    setCurrentMonth(newMonth);
+  const changeMonth = (newMonth: Date, dir: number) => {
+    setDirection(dir);
+    setInternalMonth(newMonth);
     onMonthChange?.(newMonth);
   };
 
-  const handleNextMonth = () => {
-    const newMonth = addMonths(currentMonth, 1);
-    setDirection(1);
-    setCurrentMonth(newMonth);
-    onMonthChange?.(newMonth);
-  };
+  const handlePrevMonth = () => changeMonth(subMonths(currentMonth, 1), -1);
+  const handleNextMonth = () => changeMonth(addMonths(currentMonth, 1), 1);
 
   const dayNames = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
 
@@ -109,6 +121,13 @@ export function HeatmapCalendar({
       </div>
 
       {/* Calendar grid */}
+      {loading ? (
+        <div className="grid grid-cols-7 gap-1.5 animate-pulse" aria-busy="true">
+          {calendarDays.map((day) => (
+            <div key={format(day, 'yyyy-MM-dd')} className="w-full aspect-square rounded-lg bg-slate-200 dark:bg-slate-800" />
+          ))}
+        </div>
+      ) : (
       <AnimatePresence mode="wait" initial={false} custom={direction}>
       <motion.div
         key={format(monthStart, 'yyyy-MM')}
@@ -127,6 +146,7 @@ export function HeatmapCalendar({
           const isWeekend = day.getDay() === 0 || day.getDay() === 6;
           const holidayName = holidayMap.get(dateKey);
           const isHoliday = !!holidayName;
+          const level = getLevel(count);
 
           return (
             <div key={dateKey} className="relative group">
@@ -136,7 +156,7 @@ export function HeatmapCalendar({
                 disabled={!isCurrentMonth || !clickable || count === 0}
                 className={`
                   w-full aspect-square rounded-lg transition-all relative flex items-center justify-center
-                  ${getIntensity(count)}
+                  ${LEVEL_BG[level]}
                   ${isCurrentMonth && clickable && count > 0 ? 'hover:ring-2 hover:ring-sky-500 hover:scale-110 cursor-pointer' : ''}
                   ${isCurrentMonth && (!clickable || count === 0) ? 'cursor-default' : ''}
                   ${!isCurrentMonth ? 'opacity-30 cursor-default' : ''}
@@ -146,7 +166,7 @@ export function HeatmapCalendar({
                 <span
                   className={`
                     text-sm md:text-base font-semibold
-                    ${!isCurrentMonth ? 'opacity-0' : isWeekend ? 'text-red-600 dark:text-red-400' : count > 4 ? 'text-white' : 'text-slate-700 dark:text-slate-300'}
+                    ${!isCurrentMonth ? 'opacity-0' : isWeekend ? 'text-red-600 dark:text-red-400' : level >= 3 ? 'text-white' : 'text-slate-700 dark:text-slate-300'}
                     ${isHoliday ? 'line-through decoration-red-600 dark:decoration-red-400 decoration-2' : ''}
                   `}
                 >
@@ -166,9 +186,12 @@ export function HeatmapCalendar({
                   <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-100 dark:to-white text-white dark:text-slate-900 text-xs font-medium px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
                     <div className="font-bold mb-0.5">{format(day, 'd MMMM', { locale: th })}</div>
                     <div className="flex items-center gap-1.5">
-                      <div className={`w-2 h-2 rounded-full ${count <= 2 ? 'bg-sky-400' : count <= 4 ? 'bg-sky-500' : 'bg-sky-600'}`} />
+                      <div className={`w-2 h-2 rounded-full ${LEVEL_DOT[level]}`} />
                       <span>{count} คนลา</span>
                     </div>
+                    {isHoliday && (
+                      <div className="mt-1 text-red-300 dark:text-red-600">{holidayName}</div>
+                    )}
                     {/* Arrow */}
                     <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
                       <div className="border-4 border-transparent border-t-slate-800 dark:border-t-white" />
@@ -194,16 +217,15 @@ export function HeatmapCalendar({
         })}
       </motion.div>
       </AnimatePresence>
+      )}
 
       {/* Legend */}
       <div className="flex items-center justify-center gap-2 mt-4 text-xs text-slate-600 dark:text-slate-400">
         <span>น้อย</span>
         <div className="flex gap-1">
-          <div className="w-4 h-4 rounded bg-slate-100 dark:bg-slate-800" />
-          <div className="w-4 h-4 rounded bg-sky-200 dark:bg-sky-900/50" />
-          <div className="w-4 h-4 rounded bg-sky-400 dark:bg-sky-700" />
-          <div className="w-4 h-4 rounded bg-sky-600 dark:bg-sky-500" />
-          <div className="w-4 h-4 rounded bg-sky-800 dark:bg-sky-400" />
+          {LEVEL_BG.map((bg) => (
+            <div key={bg} className={`w-4 h-4 rounded ${bg}`} />
+          ))}
         </div>
         <span>มาก</span>
       </div>

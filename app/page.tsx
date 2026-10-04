@@ -490,6 +490,7 @@ export default function HomePage() {
                           className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg"
                         >
                           <div className="flex items-center gap-2 flex-wrap">
+                            <LeaveStatusIcon status={leave.status} />
                             <p className="font-medium text-body-sm min-w-0 truncate" title={fullName}>
                               {fullName}
                             </p>
@@ -501,7 +502,6 @@ export default function HomePage() {
                             <span className={`px-1.5 py-0.5 text-caption rounded flex-shrink-0 ${colorClass.light} ${colorClass.dark}`}>
                               {typeLabel}
                             </span>
-                            <LeaveStatusIcon status={leave.status} />
                             {leave.isHalfDay && leave.halfDayPeriod && (
                               <span className="px-1.5 py-0.5 text-caption rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 flex-shrink-0">
                                 {HALF_DAY_PERIOD_LABELS[leave.halfDayPeriod]}

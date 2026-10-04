@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -13,8 +13,6 @@ import {
   Settings,
   LogOut,
   BarChart3,
-  ChevronLeft,
-  ChevronRight,
   Eye,
   X,
   KeyRound,
@@ -28,7 +26,7 @@ import { toast } from 'sonner';
 import { CountUp } from '@/components/CountUp';
 import { formatFullThaiDate, formatThaiDate } from '@/lib/thaiDate';
 import HrLayoutWrapper from '@/components/hr/HrLayoutWrapper';
-import { format, addMonths, subMonths, startOfMonth, getDay } from 'date-fns';
+import { HeatmapCalendar } from '@/components/HeatmapCalendar';
 import { primaryLeaveQueue, type HrRole } from '@/lib/roles';
 import { LEAVE_STATUS_LABELS, LEAVE_STATUS_COLORS, type LeaveStatus } from '@/types/leave';
 
@@ -106,7 +104,7 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
   const [loadingLeaves, setLoadingLeaves] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [heatmapData, setHeatmapData] = useState<HeatmapDay[]>([]);
-  const [holidays, setHolidays] = useState<Map<string, string>>(new Map());
+  const [holidays, setHolidays] = useState<Array<{ date: string; name: string }>>([]);
   const [loadingHeatmap, setLoadingHeatmap] = useState(false);
   const [selectedDay, setSelectedDay] = useState<HeatmapDay | null>(null);
   const [modalType, setModalType] = useState<'pending' | 'approval' | 'today' | 'tomorrow' | null>(null);
@@ -172,6 +170,11 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
     }
   }, [isHeatmapVisible, selectedMonth]);
 
+  const heatmapCounts = useMemo(
+    () => Object.fromEntries(heatmapData.map((day) => [day.date, day.count])),
+    [heatmapData]
+  );
+
   const refreshData = () =>
     Promise.all([fetchSummaryData(false), isHeatmapVisible ? fetchHeatmapData(false) : null]);
 
@@ -222,14 +225,7 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
       ]);
 
       setHeatmapData(heatmapRes.heatmap || []);
-      setHolidays(
-        new Map<string, string>(
-          holidaysRes.holidays.map((h: { date: string; name: string }) => [
-            h.date.split('T')[0],
-            h.name,
-          ])
-        )
-      );
+      setHolidays(holidaysRes.holidays || []);
     } catch (err) {
       console.error('Failed to fetch heatmap:', err);
     } finally {
@@ -668,152 +664,21 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
               transition={{ delay: 0.6 }}
               className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-800"
             >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 mb-4">
                 ปฏิทินการลา
               </h2>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}
-                  className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  aria-label="เดือนก่อนหน้า"
-                >
-                  <ChevronLeft className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-                </button>
-                <span className="text-sm font-medium text-slate-900 dark:text-slate-100 min-w-[120px] text-center">
-                  {formatThaiDate(selectedMonth, 'MMMM yyyy')}
-                </span>
-                <button
-                  onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
-                  className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  aria-label="เดือนถัดไป"
-                >
-                  <ChevronRight className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-                </button>
-              </div>
-            </div>
-
-            {loadingHeatmap ? (
-              <div className="animate-pulse space-y-2">
-                <div className="grid grid-cols-7 gap-1">
-                  {[...Array(35)].map((_, i) => (
-                    <div key={i} className="h-10 bg-slate-200 dark:bg-slate-800 rounded" />
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {/* Day headers */}
-                <div className="grid grid-cols-7 gap-1 mb-2">
-                  {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map((day) => (
-                    <div key={day} className="text-center text-xs font-medium text-slate-500 dark:text-slate-400">
-                      {day}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Calendar grid */}
-                <div className="grid grid-cols-7 gap-1.5">
-                  {/* Empty cells for days before month starts */}
-                  {[...Array(getDay(startOfMonth(selectedMonth)))].map((_, i) => (
-                    <div key={`empty-${i}`} />
-                  ))}
-
-                  {/* Day cells */}
-                  {heatmapData.map((day: HeatmapDay) => {
-                    const date = new Date(day.date);
-                    const dayNum = date.getDate();
-                    const isToday = format(new Date(), 'yyyy-MM-dd') === day.date;
-                    const count = day.count;
-                    const holidayName = holidays.get(day.date);
-                    const isHoliday = !!holidayName;
-                    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-
-                    let bgColor = 'bg-slate-50 dark:bg-slate-800/30';
-                    let hoverColor = 'hover:bg-slate-100 dark:hover:bg-slate-800/50';
-                    if (count > 0 && count <= 2) {
-                      bgColor = 'bg-sky-100 dark:bg-sky-900/30';
-                      hoverColor = 'hover:bg-sky-200 dark:hover:bg-sky-900/50';
-                    }
-                    if (count > 2 && count <= 5) {
-                      bgColor = 'bg-sky-200 dark:bg-sky-800/50';
-                      hoverColor = 'hover:bg-sky-300 dark:hover:bg-sky-800/70';
-                    }
-                    if (count > 5 && count <= 10) {
-                      bgColor = 'bg-sky-300 dark:bg-sky-700/70';
-                      hoverColor = 'hover:bg-sky-400 dark:hover:bg-sky-700/90';
-                    }
-                    if (count > 10) {
-                      bgColor = 'bg-sky-500 dark:bg-sky-600';
-                      hoverColor = 'hover:bg-sky-600 dark:hover:bg-sky-700';
-                    }
-
-                    return (
-                      <div key={day.date} className="relative group">
-                        <button
-                          onClick={() => count > 0 && setSelectedDay(day)}
-                          className={`
-                            relative h-12 rounded-lg transition-all text-sm font-semibold w-full
-                            ${bgColor}
-                            ${count > 0 ? `cursor-pointer ${hoverColor} hover:scale-105 hover:shadow-md` : 'cursor-default'}
-                            ${isToday ? 'ring-2 ring-orange-500 dark:ring-orange-400 ring-offset-1' : ''}
-                            ${count > 10 ? 'text-white' : isWeekend ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-slate-100'}
-                          `}
-                        >
-                          <span className={`block ${isHoliday ? 'line-through decoration-red-600 dark:decoration-red-400 decoration-2' : ''}`}>
-                            {dayNum}
-                          </span>
-                          {count > 0 && (
-                            <span className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 dark:bg-orange-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-md border-2 border-white dark:border-slate-900">
-                              {count}
-                            </span>
-                          )}
-                        </button>
-
-                        {/* Holiday Tooltip */}
-                        {isHoliday && (
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                            <div className="bg-gradient-to-br from-red-900 to-red-800 dark:from-red-100 dark:to-red-50 text-white dark:text-red-900 text-xs font-medium px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
-                              <div className="font-bold">{holidayName}</div>
-                              {/* Arrow */}
-                              <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
-                                <div className="border-4 border-transparent border-t-red-800 dark:border-t-red-50" />
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Legend - Compact */}
-                <div className="flex items-center gap-3 pt-3 text-xs text-slate-600 dark:text-slate-400 flex-wrap">
-                  <span className="font-medium">คนลา:</span>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 rounded bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700" />
-                    <span>0</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 rounded bg-sky-100 dark:bg-sky-900/30" />
-                    <span>1-2</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 rounded bg-sky-200 dark:bg-sky-800/50" />
-                    <span>3-5</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 rounded bg-sky-300 dark:bg-sky-700/70" />
-                    <span>6-10</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 rounded bg-sky-500 dark:bg-sky-600" />
-                    <span>10+</span>
-                  </div>
-                </div>
-                <LeaveStatusIconLegend />
-              </div>
-            )}
+              <HeatmapCalendar
+                data={heatmapCounts}
+                currentDate={selectedMonth}
+                onMonthChange={setSelectedMonth}
+                onDayClick={(date) => {
+                  const day = heatmapData.find((d) => d.date === date);
+                  if (day) setSelectedDay(day);
+                }}
+                holidays={holidays}
+                loading={loadingHeatmap}
+              />
+              <LeaveStatusIconLegend className="pt-3" />
             </motion.div>
           </div>
 
@@ -1009,6 +874,7 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+                          <LeaveStatusIcon status={leave.status} />
                           <p className="font-medium text-sm text-slate-900 dark:text-slate-100">
                             {leave.teacher.name}
                           </p>
@@ -1020,7 +886,6 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                           <span className={`px-1.5 py-0.5 text-xs rounded ${typeColors[leave.type]}`}>
                             {leave.type === 'other' && leave.customTypeName ? leave.customTypeName : typeLabels[leave.type]}
                           </span>
-                          <LeaveStatusIcon status={leave.status} />
                           {leave.isHalfDay && (
                             <span className="px-1.5 py-0.5 text-xs rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                               {leave.halfDayPeriod === 'morning' ? 'ครึ่งเช้า' : 'ครึ่งบ่าย'}
