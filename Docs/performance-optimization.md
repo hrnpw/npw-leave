@@ -396,7 +396,7 @@ PWA:             Installable ✓
 GET  /api/public/summary          < 300ms (cached 60s)
 POST /api/auth/teacher/verify     < 500ms
 POST /api/teacher/leaves/submit   < 1000ms
-GET  /api/hr/dashboard/summary    < 500ms
+GET  /api/hr/dashboard/all        < 500ms
 POST /api/hr/approvals/[id]/approve < 300ms
 GET  /api/hr/leaves/[id]/pdf      < 6000ms (Puppeteer cold start)
 ```

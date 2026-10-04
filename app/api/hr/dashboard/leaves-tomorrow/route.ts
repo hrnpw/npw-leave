@@ -27,6 +27,7 @@ export async function GET() {
         status: { in: ['reviewed', 'approved'] },
         startDate: { lte: tomorrowEnd },
         endDate: { gte: tomorrowStart },
+        teacher: { isActive: true },
       },
       include: {
         teacher: {

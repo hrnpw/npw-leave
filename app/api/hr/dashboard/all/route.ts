@@ -34,7 +34,6 @@ export async function GET(request: Request) {
       totalTeachers,
       leavesTomorrow,
       queueCounts,
-      settings,
       leavesToday,
     ] = await Promise.all([
       // Summary queries
@@ -46,16 +45,13 @@ export async function GET(request: Request) {
           status: { in: ['reviewed', 'approved'] },
           startDate: { lte: tomorrowEnd },
           endDate: { gte: tomorrowStart },
+          teacher: { isActive: true },
         },
       }),
       prisma.leave.groupBy({
         by: ['status'],
         where: { status: { in: ['pending', 'reviewed'] } },
         _count: { _all: true },
-      }),
-      prisma.settings.findUnique({
-        where: { id: 'singleton' },
-        select: { quotaSickPersonal: true, systemStartDate: true },
       }),
 
       // Leaves today with full info
@@ -64,6 +60,7 @@ export async function GET(request: Request) {
           status: { in: ['reviewed', 'approved'] },
           startDate: { lte: todayEnd },
           endDate: { gte: todayStart },
+          teacher: { isActive: true },
         },
         select: {
           id: true,
@@ -97,24 +94,6 @@ export async function GET(request: Request) {
       }),
     ]);
 
-    // Calculate exceeding count (optimized with indexed query)
-    const quotaSickPersonal = settings?.quotaSickPersonal || 23;
-    const systemStartDate = settings?.systemStartDate || new Date('2026-09-07');
-
-    const exceedingTeachers = await prisma.$queryRaw<Array<{ count: bigint }>>`
-      SELECT COUNT(DISTINCT "teacher_id") as count
-      FROM (
-        SELECT "teacher_id", SUM("days_calendar") as total
-        FROM "leaves"
-        WHERE "status" = 'approved'
-          AND "type" IN ('sick', 'personal')
-          AND "created_at" >= ${systemStartDate}
-        GROUP BY "teacher_id"
-        HAVING SUM("days_calendar") > ${quotaSickPersonal}
-      ) AS exceeding
-    `;
-
-    const exceedingCount = Number(exceedingTeachers[0]?.count || 0);
     const pendingCount = queueCounts.find((c) => c.status === 'pending')?._count._all ?? 0;
     const reviewedCount = queueCounts.find((c) => c.status === 'reviewed')?._count._all ?? 0;
     const leavesTodayFull = leavesToday.filter((leave) => !leave.isHalfDay).length;
@@ -128,7 +107,6 @@ export async function GET(request: Request) {
       leavesTomorrow,
       pendingCount,
       reviewedCount,
-      exceedingCount,
     };
 
     // Format leaves today

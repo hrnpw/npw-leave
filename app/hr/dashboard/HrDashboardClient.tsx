@@ -8,7 +8,6 @@ import {
   UserMinus,
   Calendar,
   Clock,
-  AlertTriangle,
   FileText,
   UserPlus,
   Settings,
@@ -51,7 +50,6 @@ interface DashboardSummary {
   leavesTomorrow: number;
   pendingCount: number;
   reviewedCount: number;
-  exceedingCount: number;
 }
 
 interface LeaveToday {
@@ -111,8 +109,9 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
   const [holidays, setHolidays] = useState<Map<string, string>>(new Map());
   const [loadingHeatmap, setLoadingHeatmap] = useState(false);
   const [selectedDay, setSelectedDay] = useState<HeatmapDay | null>(null);
-  const [modalType, setModalType] = useState<'pending' | 'today' | 'tomorrow' | null>(null);
+  const [modalType, setModalType] = useState<'pending' | 'approval' | 'today' | 'tomorrow' | null>(null);
   const [modalData, setModalData] = useState<any[]>([]);
+  const [modalTotal, setModalTotal] = useState<number | null>(null);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -393,12 +392,12 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
 
         <main className="max-w-7xl mx-auto px-4 py-4 space-y-4">
           {/* Stats cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
             {/* Attending */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-md transition-all"
+              className="col-span-2 lg:col-span-1 bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-md transition-all"
               onClick={() => !loading && router.push('/hr/teachers')}
             >
               <div className="flex items-center gap-2 mb-3">
@@ -414,46 +413,9 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                   <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
                 ) : summary ? (
                   <>
-                    <CountUp end={summary.attendingToday} /> <span className="text-base text-slate-500 font-normal ml-1">คน</span>
-                  </>
-                ) : (
-                  <span className="text-xl text-slate-400">-</span>
-                )}
-              </div>
-            </motion.div>
-
-            {/* Pending */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              onClick={async () => {
-                if (loading) return;
-                try {
-                  const res = await fetch(`/api/hr/leaves?status=${queue.countKey}`);
-                  const data = await res.json();
-                  setModalData(data.leaves || []);
-                  setModalType('pending');
-                } catch (error) {
-                  toast.error('ไม่สามารถโหลดข้อมูลได้');
-                }
-              }}
-              className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-amber-300 dark:hover:border-amber-700 hover:shadow-md transition-all"
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <div className="p-1.5 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-                  <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                </div>
-                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                  {queue.label}
-                </h3>
-              </div>
-              <div className="text-3xl font-bold text-slate-900 dark:text-slate-100 leading-none flex items-center gap-2">
-                {loading ? (
-                  <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
-                ) : summary ? (
-                  <>
-                    <CountUp end={queueCount ?? 0} /> <span className="text-base text-slate-500 font-normal ml-1">ใบ</span>
+                    <CountUp end={summary.attendingToday} />
+                    <span className="text-xl text-slate-400 font-normal">/{summary.totalTeachers}</span>
+                    <span className="text-base text-slate-500 font-normal ml-1">คน</span>
                   </>
                 ) : (
                   <span className="text-xl text-slate-400">-</span>
@@ -465,11 +427,12 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
+              transition={{ delay: 0.1 }}
               className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-sky-300 dark:hover:border-sky-700 hover:shadow-md transition-all"
               onClick={() => {
                 if (loading) return;
                 setModalData(leavesToday);
+                setModalTotal(null);
                 setModalType('today');
               }}
             >
@@ -498,7 +461,7 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
+              transition={{ delay: 0.2 }}
               className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-amber-300 dark:hover:border-amber-700 hover:shadow-md transition-all"
               onClick={async () => {
                 if (loading) return;
@@ -506,6 +469,7 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                   const res = await fetch('/api/hr/dashboard/leaves-tomorrow');
                   const data = await res.json();
                   setModalData(data.leaves || []);
+                  setModalTotal(null);
                   setModalType('tomorrow');
                 } catch (error) {
                   toast.error('ไม่สามารถโหลดข้อมูลได้');
@@ -532,35 +496,86 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                 )}
               </div>
             </motion.div>
-
-            {/* Exceeding */}
+            {/* Pending */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-red-300 dark:hover:border-red-700 hover:shadow-md transition-all"
-              onClick={() => !loading && router.push('/hr/teachers?filter=exceeding')}
+              transition={{ delay: 0.3 }}
+              onClick={async () => {
+                if (loading) return;
+                try {
+                  const res = await fetch('/api/hr/leaves?status=pending&limit=100');
+                  const data = await res.json();
+                  setModalData(data.leaves || []);
+                  setModalTotal(data.pagination?.total ?? null);
+                  setModalType('pending');
+                } catch (error) {
+                  toast.error('ไม่สามารถโหลดข้อมูลได้');
+                }
+              }}
+              className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-amber-300 dark:hover:border-amber-700 hover:shadow-md transition-all"
             >
               <div className="flex items-center gap-2 mb-3">
-                <div className="p-1.5 bg-red-100 dark:bg-red-900/30 rounded-lg">
-                  <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
+                <div className="p-1.5 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+                  <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                 </div>
                 <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                  เกินเกณฑ์
+                  รอตรวจสอบ
                 </h3>
               </div>
               <div className="text-3xl font-bold text-slate-900 dark:text-slate-100 leading-none flex items-center gap-2">
                 {loading ? (
-                  <Loader2 className="w-8 h-8 animate-spin text-red-500" />
+                  <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
                 ) : summary ? (
                   <>
-                    <CountUp end={summary.exceedingCount} /> <span className="text-base text-slate-500 font-normal ml-1">คน</span>
+                    <CountUp end={summary.pendingCount} /> <span className="text-base text-slate-500 font-normal ml-1">ใบ</span>
                   </>
                 ) : (
                   <span className="text-xl text-slate-400">-</span>
                 )}
               </div>
             </motion.div>
+
+            {/* Awaiting approval */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              onClick={async () => {
+                if (loading) return;
+                try {
+                  const res = await fetch('/api/hr/leaves?status=reviewed&limit=100');
+                  const data = await res.json();
+                  setModalData(data.leaves || []);
+                  setModalTotal(data.pagination?.total ?? null);
+                  setModalType('approval');
+                } catch (error) {
+                  toast.error('ไม่สามารถโหลดข้อมูลได้');
+                }
+              }}
+              className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-violet-300 dark:hover:border-violet-700 hover:shadow-md transition-all"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-1.5 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
+                  <Clock className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                </div>
+                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                  รออนุมัติ
+                </h3>
+              </div>
+              <div className="text-3xl font-bold text-slate-900 dark:text-slate-100 leading-none flex items-center gap-2">
+                {loading ? (
+                  <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
+                ) : summary ? (
+                  <>
+                    <CountUp end={summary.reviewedCount} /> <span className="text-base text-slate-500 font-normal ml-1">ใบ</span>
+                  </>
+                ) : (
+                  <span className="text-xl text-slate-400">-</span>
+                )}
+              </div>
+            </motion.div>
+
           </div>
 
           {/* Two-column layout: Leaves Today + Heatmap Calendar */}
@@ -604,6 +619,7 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                         <div className="flex items-start justify-between gap-3 mb-2">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
+                              <LeaveStatusIcon status={leave.status} />
                               <p className="font-medium text-sm text-slate-900 dark:text-slate-100">
                                 {leave.teacher.name}
                               </p>
@@ -613,7 +629,6 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                               <span className={`px-1.5 py-0.5 text-xs rounded ${typeColors[leave.type]}`}>
                                 {leave.type === 'other' && leave.customTypeName ? leave.customTypeName : typeLabels[leave.type]}
                               </span>
-                              <LeaveStatusIcon status={leave.status} />
                               {leave.isHalfDay && (
                                 <span className="px-1.5 py-0.5 text-xs rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                                   {leave.halfDayPeriod === 'morning' ? 'ครึ่งเช้า' : 'ครึ่งบ่าย'}
@@ -827,7 +842,8 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
               >
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                    {modalType === 'pending' && `ใบลา${queue.label}`}
+                    {modalType === 'pending' && 'ใบลารอตรวจสอบ'}
+                    {modalType === 'approval' && 'ใบลารออนุมัติ'}
                     {modalType === 'today' && 'ครูที่ลาวันนี้'}
                     {modalType === 'tomorrow' && 'ครูที่ลาพรุ่งนี้'}
                   </h3>
@@ -843,7 +859,11 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                 </div>
 
                 <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
-                  {modalData.length > 0 ? `ทั้งหมด ${modalData.length} รายการ` : 'ไม่มีข้อมูล'}
+                  {modalData.length === 0
+                    ? 'ไม่มีข้อมูล'
+                    : modalTotal !== null && modalTotal > modalData.length
+                      ? `แสดง ${modalData.length} จากทั้งหมด ${modalTotal} รายการ (เปิดหน้าตรวจสอบ/อนุมัติเพื่อดูทั้งหมด)`
+                      : `ทั้งหมด ${modalData.length} รายการ`}
                 </p>
 
                 {modalData.length > 0 ? (
@@ -894,8 +914,8 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                             <span className={`px-1.5 py-0.5 text-xs rounded ${typeColors[item.type]}`}>
                               {item.type === 'other' && item.customTypeName ? item.customTypeName : typeLabels[item.type]}
                             </span>
-                            {modalType !== 'pending' && <LeaveStatusIcon status={item.status} />}
-                            {modalType === 'pending' && (
+                            {modalType !== 'pending' && modalType !== 'approval' && <LeaveStatusIcon status={item.status} />}
+                            {(modalType === 'pending' || modalType === 'approval') && (
                               <span className={`px-1.5 py-0.5 text-xs rounded border ${LEAVE_STATUS_COLORS[item.status as LeaveStatus].light} ${LEAVE_STATUS_COLORS[item.status as LeaveStatus].dark}`}>
                                 {LEAVE_STATUS_LABELS[item.status as LeaveStatus]}
                               </span>
