@@ -81,15 +81,6 @@ export async function POST(request: NextRequest) {
     session.createdAt = Date.now();
     await session.save();
 
-    console.log('[HR Login API] Session created and saved:', {
-      id: session.id,
-      username: session.username,
-      role: session.role,
-      createdAt: session.createdAt,
-      timestamp: new Date().toISOString(),
-      cookieHeaders: response.headers.get('set-cookie')
-    });
-
     // Update last login (non-critical - don't block response if it fails)
     prisma.hrUser.update({
       where: { id: hrUser.id },

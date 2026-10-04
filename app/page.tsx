@@ -398,7 +398,7 @@ export default function HomePage() {
                       exit="exit"
                       className="flex items-center gap-2 min-w-0 rounded-lg px-2 -mx-2 py-2 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-default"
                     >
-                      <span className="text-muted flex-shrink-0" aria-hidden>–</span>
+                      <LeaveStatusIcon status={teacher.status} />
                       <span className="min-w-0 truncate font-medium text-body-sm">
                         {teacher.firstName} {teacher.lastName}
                       </span>
@@ -415,7 +415,6 @@ export default function HomePage() {
                           {HALF_DAY_PERIOD_LABELS[teacher.halfDayPeriod]}
                         </span>
                       )}
-                      <LeaveStatusIcon status={teacher.status} />
                     </motion.div>
                   );
                 })}
