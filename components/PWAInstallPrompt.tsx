@@ -70,7 +70,7 @@ export function PWAInstallPrompt() {
 
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1">
-              เพิ่มลงหน้าจอโฮม
+              เพิ่มลงหน้าจอ
             </h3>
             <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">
               ติดตั้งแอปเพื่อเข้าถึงได้รวดเร็วและใช้งานแบบออฟไลน์
