@@ -823,13 +823,13 @@ export default function StorageClient() {
                   <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 mb-4">
                     {previewFile.mimeType.startsWith('image/') ? (
                       <img
-                        src={previewFile.blobUrl}
+                        src={`/api/hr/attachments/${previewFile.id}`}
                         alt={previewFile.fileName}
                         className="max-w-full h-auto mx-auto rounded-lg"
                       />
                     ) : previewFile.mimeType === 'application/pdf' ? (
                       <iframe
-                        src={previewFile.blobUrl}
+                        src={`/api/hr/attachments/${previewFile.id}`}
                         className="w-full h-[600px] rounded-lg"
                         title={previewFile.fileName}
                       />
@@ -845,7 +845,7 @@ export default function StorageClient() {
 
                   <div className="flex gap-3">
                     <a
-                      href={previewFile.blobUrl}
+                      href={`/api/hr/attachments/${previewFile.id}?download=1`}
                       download={previewFile.fileName}
                       className="flex-1 py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
                     >

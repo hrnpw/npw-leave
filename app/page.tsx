@@ -400,11 +400,11 @@ export default function HomePage() {
                       className="flex items-center gap-2 min-w-0 rounded-lg px-2 -mx-2 py-2 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-default"
                     >
                       <LeaveStatusIcon status={teacher.status} />
-                      <span className="min-w-0 truncate font-medium text-body-sm">
+                      <span className="flex-shrink-0 font-medium text-body-sm">
                         {teacher.firstName} {teacher.lastName}
                       </span>
                       {teacher.department && (
-                        <span className="text-caption text-secondary flex-shrink-0">
+                        <span className="min-w-0 truncate text-caption text-secondary" title={teacher.department}>
                           ({teacher.department})
                         </span>
                       )}

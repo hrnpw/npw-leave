@@ -477,9 +477,12 @@ export default function LeaveDetailClient({
             </h2>
             <div className="space-y-2">
               {leave.attachments.map((file) => (
-                <div
+                <a
                   key={file.id}
-                  className="flex items-center gap-2.5 p-2.5 bg-slate-50 dark:bg-slate-800 rounded-lg"
+                  href={`/api/hr/attachments/${file.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2.5 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors group"
                 >
                   <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
@@ -490,15 +493,8 @@ export default function LeaveDetailClient({
                       {formatFileSize(file.fileSize)}
                     </p>
                   </div>
-                  <a
-                    href={file.blobUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                  >
-                    <Download className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
-                  </a>
-                </div>
+                  <Download className="w-4 h-4 text-slate-400 group-hover:text-sky-600 dark:group-hover:text-sky-400 flex-shrink-0" />
+                </a>
               ))}
             </div>
           </motion.div>

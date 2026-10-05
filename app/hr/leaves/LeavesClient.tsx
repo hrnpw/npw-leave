@@ -819,15 +819,17 @@ export default function LeavesClient({ hrUser }: LeavesClientProps) {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 ml-2 shrink-0">
-                        {leave.printedAt && (
-                          <div className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-900/20 rounded border border-emerald-200 dark:border-emerald-800">
-                            <Printer className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                            <span className="text-xs text-emerald-700 dark:text-emerald-300">พิมพ์แล้ว</span>
-                          </div>
-                        )}
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {leave.leaveNo}
-                        </p>
+                        <div className="flex flex-col items-end gap-1">
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {leave.leaveNo}
+                          </p>
+                          {leave.printedAt && (
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-900/20 rounded border border-emerald-200 dark:border-emerald-800">
+                              <Printer className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                              <span className="text-xs text-emerald-700 dark:text-emerald-300">พิมพ์แล้ว</span>
+                            </div>
+                          )}
+                        </div>
                         {isExpanded ? (
                           <ChevronUp className="w-4 h-4 text-slate-400" />
                         ) : (

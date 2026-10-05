@@ -396,7 +396,7 @@ export default function LeaveDetailClient({ leaveId, teacher }: LeaveDetailClien
               {leave.attachments.map((file) => (
                 <a
                   key={file.id}
-                  href={file.fileUrl}
+                  href={`/api/teacher/attachments/${file.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors group"
