@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { canReview, canApprove, hrRoleLabel, type HrRole } from '@/lib/roles';
+import { hrRoleLabel, type HrRole } from '@/lib/roles';
 import type { LeaveQueueCounts } from './HrLayoutWrapper';
 
 interface NavItem {
@@ -59,10 +59,9 @@ export default function HrSidebar({ hrUser, counts }: HrSidebarProps) {
     }
   };
 
-  // เมนูตรวจ/อนุมัติ: เมนูที่ role นั้นทำงานได้ขึ้นก่อน อีกเมนูดูได้อย่างเดียว
   const reviewItem: NavItem = {
     href: '/hr/reviews',
-    label: canReview(hrUser.role) ? 'ตรวจใบลา' : 'ตรวจใบลา (ดูอย่างเดียว)',
+    label: 'ตรวจใบลา',
     icon: ClipboardList,
     iconColor: 'text-orange-500',
     active: pathname === '/hr/reviews',
@@ -70,14 +69,13 @@ export default function HrSidebar({ hrUser, counts }: HrSidebarProps) {
   };
   const approvalItem: NavItem = {
     href: '/hr/approvals',
-    label: canApprove(hrUser.role) ? 'อนุมัติใบลา' : 'อนุมัติใบลา (ดูอย่างเดียว)',
+    label: 'อนุมัติใบลา',
     icon: ClipboardCheck,
     iconColor: 'text-sky-500',
     active: pathname === '/hr/approvals',
     badge: counts.reviewed,
   };
-  const queueItems =
-    hrUser.role === 'director' ? [approvalItem, reviewItem] : [reviewItem, approvalItem];
+  const queueItems = [reviewItem, approvalItem];
 
   const navSections: Array<{ label: string; items: NavItem[] }> = [
     {

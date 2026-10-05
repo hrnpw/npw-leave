@@ -36,6 +36,7 @@ import {
   HALF_DAY_PERIOD_LABELS,
 } from '@/types/leave';
 import HrLayoutWrapper from '@/components/hr/HrLayoutWrapper';
+import HrLogoutButton from '@/components/hr/HrLogoutButton';
 import { formatThaiDateShort } from '@/lib/thaiDate';
 import type { HrRole } from '@/lib/roles';
 import {
@@ -392,6 +393,7 @@ export default function LeavesClient({ hrUser }: LeavesClientProps) {
                   <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-sky-500 rounded-full" />
                 )}
               </button>
+              <HrLogoutButton />
             </div>
           </div>
 

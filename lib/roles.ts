@@ -28,17 +28,3 @@ export function canApprove(role: HrRole): boolean {
 export function canManage(role: HrRole): boolean {
   return role === 'hr' || role === 'director' || role === 'super_admin';
 }
-
-// หน้าคิวหลักของแต่ละ role (bottom nav, dashboard quick action)
-// ผอ. -> หน้าอนุมัติ (ยอด reviewed), hr/super_admin -> หน้าตรวจ (ยอด pending)
-export interface LeaveQueue {
-  href: '/hr/reviews' | '/hr/approvals';
-  label: string;
-  countKey: 'pending' | 'reviewed';
-}
-
-export function primaryLeaveQueue(role: HrRole): LeaveQueue {
-  return role === 'director'
-    ? { href: '/hr/approvals', label: 'รออนุมัติ', countKey: 'reviewed' }
-    : { href: '/hr/reviews', label: 'รอตรวจสอบ', countKey: 'pending' };
-}

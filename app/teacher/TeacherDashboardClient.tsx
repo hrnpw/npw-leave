@@ -14,6 +14,7 @@ import type { LeaveType, LeaveStatus } from '@/types/leave';
 import { format, parseISO, isFuture, differenceInCalendarDays } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { fetchCache } from '@/lib/fetchCache';
+import { clearClientCaches } from '@/lib/clearClientCaches';
 import { PullToRefreshIndicator } from '@/components/PullToRefreshIndicator';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useConfetti } from './hooks/useConfetti';
@@ -187,6 +188,7 @@ export default function TeacherDashboardClient({ teacher }: TeacherDashboardClie
       }
 
       await fetch('/api/auth/teacher/logout', { method: 'POST' });
+      clearClientCaches();
       toast.success('ออกจากระบบสำเร็จ');
       router.push('/');
     } catch (error) {

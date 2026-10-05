@@ -69,7 +69,7 @@ export default function HrLayoutWrapper({ children, hrUser }: HrLayoutWrapperPro
       <div className="lg:pl-64">{children}</div>
 
       {/* Bottom nav for mobile */}
-      <HrBottomNav role={hrUser.role} counts={counts} />
+      <HrBottomNav counts={counts} />
     </>
   );
 }

@@ -13,12 +13,10 @@ import {
   UserPlus,
   LogOut,
   ChevronRight,
-  ClipboardCheck,
-  ClipboardList,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import HrLayoutWrapper from '@/components/hr/HrLayoutWrapper';
-import { canReview, canApprove, hrRoleLabel, primaryLeaveQueue, type HrRole } from '@/lib/roles';
+import { hrRoleLabel, type HrRole } from '@/lib/roles';
 
 interface HrMenuClientProps {
   hrUser: {
@@ -41,26 +39,7 @@ interface MenuItem {
 export default function HrMenuClient({ hrUser }: HrMenuClientProps) {
   const router = useRouter();
 
-  // หน้าตรวจ/อนุมัติที่ไม่ได้อยู่ใน bottom nav ของ role นี้
-  const secondaryQueueItem: MenuItem =
-    primaryLeaveQueue(hrUser.role).href === '/hr/reviews'
-      ? {
-          icon: ClipboardCheck,
-          label: canApprove(hrUser.role) ? 'อนุมัติใบลา' : 'อนุมัติใบลา (ดูอย่างเดียว)',
-          description: 'ใบลาที่ตรวจผ่านแล้ว รอผู้อำนวยการอนุมัติ',
-          href: '/hr/approvals',
-          color: 'bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400',
-        }
-      : {
-          icon: ClipboardList,
-          label: canReview(hrUser.role) ? 'ตรวจใบลา' : 'ตรวจใบลา (ดูอย่างเดียว)',
-          description: 'ใบลาที่รอเจ้าหน้าที่ HR ตรวจสอบ',
-          href: '/hr/reviews',
-          color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400',
-        };
-
   const menuItems: MenuItem[] = [
-    secondaryQueueItem,
     {
       icon: UserPlus,
       label: 'ยื่นใบลาแทนครู',

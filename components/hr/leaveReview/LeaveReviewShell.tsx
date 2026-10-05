@@ -4,6 +4,7 @@ import { ReactNode, useState } from 'react';
 import { Check, Eye, RefreshCw } from 'lucide-react';
 import type { MotionValue } from 'framer-motion';
 import { PullToRefreshIndicator } from '@/components/PullToRefreshIndicator';
+import HrLogoutButton from '@/components/hr/HrLogoutButton';
 import type { PullState } from '@/hooks/usePullToRefresh';
 
 interface LeaveReviewShellProps {
@@ -63,16 +64,19 @@ export default function LeaveReviewShell({
               <h1 className="text-base font-bold text-slate-900 dark:text-slate-100">{title}</h1>
               <p className="text-sm text-slate-600 dark:text-slate-400">{subtitle}</p>
             </div>
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing || loading}
-              className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
-              aria-label="รีเฟรชข้อมูล"
-            >
-              <RefreshCw
-                className={`w-4 h-4 text-slate-700 dark:text-slate-300 ${refreshing ? 'animate-spin' : ''}`}
-              />
-            </button>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing || loading}
+                className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
+                aria-label="รีเฟรชข้อมูล"
+              >
+                <RefreshCw
+                  className={`w-4 h-4 text-slate-700 dark:text-slate-300 ${refreshing ? 'animate-spin' : ''}`}
+                />
+              </button>
+              <HrLogoutButton />
+            </div>
           </div>
 
           {readOnlyNote && (

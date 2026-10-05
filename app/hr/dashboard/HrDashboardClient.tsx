@@ -9,10 +9,7 @@ import {
   Calendar,
   Clock,
   FileText,
-  UserPlus,
-  Settings,
   LogOut,
-  BarChart3,
   Eye,
   X,
   KeyRound,
@@ -25,9 +22,10 @@ import { LeaveStatusIcon, LeaveStatusIconLegend } from '@/components/LeaveStatus
 import { toast } from 'sonner';
 import { CountUp } from '@/components/CountUp';
 import { formatFullThaiDate, formatThaiDate } from '@/lib/thaiDate';
+import { clearClientCaches } from '@/lib/clearClientCaches';
 import HrLayoutWrapper from '@/components/hr/HrLayoutWrapper';
 import { HeatmapCalendar } from '@/components/HeatmapCalendar';
-import { primaryLeaveQueue, type HrRole } from '@/lib/roles';
+import { type HrRole } from '@/lib/roles';
 import { LEAVE_STATUS_LABELS, LEAVE_STATUS_COLORS, type LeaveStatus } from '@/types/leave';
 
 interface HrDashboardClientProps {
@@ -95,8 +93,6 @@ interface HeatmapDay {
 
 export default function HrDashboardClient({ user }: HrDashboardClientProps) {
   const router = useRouter();
-  // คิวหลักตาม role: hr/super_admin = รอตรวจสอบ (pending), ผอ. = รออนุมัติ (reviewed)
-  const queue = primaryLeaveQueue(user.role);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -133,10 +129,11 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
   // Prefetch approvals routes after dashboard loads
   useEffect(() => {
     if (!loading && summary) {
-      router.prefetch(queue.href);
+      router.prefetch('/hr/reviews');
+      router.prefetch('/hr/approvals');
       router.prefetch('/hr/leaves');
     }
-  }, [loading, summary, router, queue.href]);
+  }, [loading, summary, router]);
   
   // Intersection Observer for lazy loading heatmap
   useEffect(() => {
@@ -245,6 +242,7 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
       }
 
       await fetch('/api/auth/hr/logout', { method: 'POST' });
+      clearClientCaches();
       toast.success('ออกจากระบบสำเร็จ');
       router.push('/');
     } catch (error) {
@@ -303,25 +301,6 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
       setChangingPassword(false);
     }
   };
-
-  const queueCount = summary
-    ? queue.countKey === 'pending'
-      ? summary.pendingCount
-      : summary.reviewedCount
-    : undefined;
-
-  const menuItems = [
-    { icon: Clock, label: queue.label, href: queue.href, badge: queueCount },
-    { icon: FileText, label: 'ใบลาทั้งหมด', href: '/hr/leaves' },
-    { icon: UserPlus, label: 'ยื่นใบลาแทนครู', href: '/hr/leave/new' },
-    { icon: Users, label: 'จัดการครู', href: '/hr/teachers' },
-    { icon: BarChart3, label: 'รายงาน', href: '/hr/reports' },
-    { icon: Settings, label: 'ตั้งค่า', href: '/hr/settings' },
-  ];
-
-  if (user.role === 'super_admin') {
-    menuItems.push({ icon: Settings, label: 'Super Admin', href: '/hr/admin' });
-  }
 
   return (
     <HrLayoutWrapper

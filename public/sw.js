@@ -1,5 +1,5 @@
 // Service Worker for Leave-NPW PWA
-const CACHE_NAME = 'leave-npw-v4'; // Bumped version to clear old cache
+const CACHE_NAME = 'leave-npw-v6'; // Bumped version to clear old cache (v4/v5 cached API responses)
 const STATIC_ASSETS = [
   '/offline',
   '/manifest.json',
@@ -103,67 +103,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // API routes: Selective caching with expiration
+  // API routes: never cached by the SW. Login-only responses must not leak between users,
+  // and public ones are already cached by fetchCache and the CDN.
   if (request.url.includes('/api/')) {
-    // Realtime endpoints - NetworkOnly (no cache)
-    const realtimeEndpoints = [
-      '/api/hr/approvals/pending',
-      '/api/hr/leaves/pending',
-      '/api/hr/leaves/pendingCount',
-      '/api/teacher/leaves/status',
-      '/api/teacher/push/',
-    ];
-
-    const isRealtime = realtimeEndpoints.some(endpoint =>
-      request.url.includes(endpoint)
-    );
-
-    if (isRealtime) {
-      // Don't cache realtime data - let it pass through
-      return;
-    }
-
-    // Other APIs: NetworkFirst with expiration check
-    event.respondWith(
-      caches.match(request).then((cached) => {
-        // Check if cache is valid and not expired
-        if (cached && !isCacheExpired(cached)) {
-          // Return cached response but update in background
-          fetch(request)
-            .then((response) => {
-              if (response && response.status === 200) {
-                const responseWithMetadata = addCacheMetadata(response.clone(), 'api');
-                caches.open(CACHE_NAME).then((cache) => {
-                  cache.put(request, responseWithMetadata);
-                });
-              }
-            })
-            .catch(() => {
-              // Ignore background update errors
-            });
-          return cached;
-        }
-
-        // Cache expired or doesn't exist - fetch from network
-        return fetch(request)
-          .then((response) => {
-            if (response && response.status === 200) {
-              const responseWithMetadata = addCacheMetadata(response.clone(), 'api');
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(request, responseWithMetadata);
-              });
-            }
-            return response;
-          })
-          .catch(() => {
-            // Network failed - return stale cache if available
-            if (cached) {
-              return cached;
-            }
-            return new Response('Network error', { status: 503 });
-          });
-      })
-    );
     return;
   }
 

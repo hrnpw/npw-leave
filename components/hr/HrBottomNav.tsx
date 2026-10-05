@@ -2,20 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, ClipboardCheck, FileText, Menu } from 'lucide-react';
-import { primaryLeaveQueue, type HrRole } from '@/lib/roles';
+import { LayoutDashboard, ClipboardList, ClipboardCheck, FileText, Menu } from 'lucide-react';
 import type { LeaveQueueCounts } from './HrLayoutWrapper';
 
 interface HrBottomNavProps {
-  role: HrRole;
   counts: LeaveQueueCounts;
 }
 
-export default function HrBottomNav({ role, counts }: HrBottomNavProps) {
+export default function HrBottomNav({ counts }: HrBottomNavProps) {
   const pathname = usePathname();
-  // ช่องเดียว: hr/super_admin -> หน้าตรวจ, ผอ. -> หน้าอนุมัติ
-  const queue = primaryLeaveQueue(role);
-  const queueCount = counts[queue.countKey];
 
   const navItems = [
     {
@@ -25,11 +20,18 @@ export default function HrBottomNav({ role, counts }: HrBottomNavProps) {
       active: pathname === '/hr/dashboard',
     },
     {
-      href: queue.href,
-      label: queue.label,
+      href: '/hr/reviews',
+      label: 'รอตรวจสอบ',
+      icon: ClipboardList,
+      active: pathname === '/hr/reviews',
+      badge: counts.pending > 0 ? counts.pending : undefined,
+    },
+    {
+      href: '/hr/approvals',
+      label: 'รออนุมัติ',
       icon: ClipboardCheck,
-      active: pathname === '/hr/reviews' || pathname === '/hr/approvals',
-      badge: queueCount > 0 ? queueCount : undefined,
+      active: pathname === '/hr/approvals',
+      badge: counts.reviewed > 0 ? counts.reviewed : undefined,
     },
     {
       href: '/hr/leaves',
@@ -54,7 +56,7 @@ export default function HrBottomNav({ role, counts }: HrBottomNavProps) {
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 z-30 pb-safe">
-      <div className="grid grid-cols-4 h-16">
+      <div className="grid grid-cols-5 h-16">
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
