@@ -18,6 +18,7 @@ import {
   History,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { fetchCache } from '@/lib/fetchCache';
 import { parseError, getSuccessMessage } from '@/lib/errorMessages';
 import { parseDateFromAPI, isSameDay } from '@/lib/client-date-utils';
 import { formatThaiDate, formatThaiDateShort } from '@/lib/thaiDate';
@@ -122,6 +123,8 @@ export default function LeaveHistoryClient({ teacher }: LeaveHistoryClientProps)
         throw new Error(error.error || 'เกิดข้อผิดพลาด');
       }
 
+      fetchCache.clear('/api/teacher/dashboard');
+      fetchCache.clear('/api/teacher/leaves/timeline-lazy');
       toast.success('ยกเลิกใบลาสำเร็จ');
       fetchLeaves();
     } catch (error: any) {

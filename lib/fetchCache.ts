@@ -12,6 +12,8 @@ interface CacheEntry<T> {
 class FetchCache {
   private cache = new Map<string, CacheEntry<any>>();
   private pendingRequests = new Map<string, Promise<any>>();
+  // URLs cleared via clear(url): the next fetch must also skip the browser/CDN HTTP cache
+  private bustOnNext = new Set<string>();
 
   /**
    * Fetch with deduplication and caching
@@ -24,7 +26,8 @@ class FetchCache {
   ): Promise<T> {
     const cacheKey = `${url}_${JSON.stringify(options?.body || '')}`;
     // Adds a unique query param so the CDN/browser cache is skipped, while the in-memory key stays the same
-    const requestUrl = options?.cacheBust
+    const shouldBust = options?.cacheBust || this.bustOnNext.has(url);
+    const requestUrl = shouldBust
       ? `${url}${url.includes('?') ? '&' : '?'}_t=${Date.now()}`
       : url;
     const cacheDuration = options?.cacheDuration || 30000; // 30 seconds default
@@ -40,6 +43,8 @@ class FetchCache {
     if (cached && Date.now() - cached.timestamp < cacheDuration) {
       return cached.data;
     }
+
+    this.bustOnNext.delete(url);
 
     // Create new request
     const requestPromise = fetch(requestUrl, options)
@@ -78,6 +83,7 @@ class FetchCache {
   clear(url?: string) {
     if (url) {
       // Clear specific URL (and all its variations)
+      this.bustOnNext.add(url);
       const keysToDelete: string[] = [];
       this.cache.forEach((_, key) => {
         if (key.startsWith(url)) {

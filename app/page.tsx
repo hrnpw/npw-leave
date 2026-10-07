@@ -62,6 +62,9 @@ interface HeatmapDay {
   leaves: DayLeave[];
 }
 
+const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+const AUTO_REFRESH_MIN_AGE_MS = 60 * 1000;
+
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 const container: Variants = {
@@ -111,9 +114,28 @@ export default function HomePage() {
     }
   }, [currentHeatmapDate]);
 
-  const fetchData = async (fresh = false) => {
+  const fetchDataRef = useRef<(fresh?: boolean, silent?: boolean) => Promise<void>>(async () => {});
+  const lastFetchAtRef = useRef(Date.now());
+
+  useEffect(() => {
+    const refreshIfStale = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastFetchAtRef.current < AUTO_REFRESH_MIN_AGE_MS) return;
+      fetchDataRef.current(true, true);
+    };
+
+    document.addEventListener('visibilitychange', refreshIfStale);
+    const timer = window.setInterval(refreshIfStale, AUTO_REFRESH_INTERVAL_MS);
+    return () => {
+      document.removeEventListener('visibilitychange', refreshIfStale);
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  const fetchData = async (fresh = false, silent = false) => {
+    lastFetchAtRef.current = Date.now();
     try {
-      setError(null);
+      if (!silent) setError(null);
 
       const year = currentHeatmapDate.getFullYear();
       const month = currentHeatmapDate.getMonth() + 1;
@@ -131,11 +153,13 @@ export default function HomePage() {
         }),
       ]);
     } catch (err) {
+      console.error('Fetch error:', err);
+      if (silent) return;
       const message = err instanceof Error ? err.message : 'ไม่สามารถโหลดข้อมูลได้';
       setError(message);
-      console.error('Fetch error:', err);
     }
   };
+  fetchDataRef.current = fetchData;
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -172,7 +196,11 @@ export default function HomePage() {
     // Find leaves from heatmap data (no need to fetch)
     const dayData = heatmapData.find(d => d.date === date);
     setSelectedDate(date);
-    setSelectedDayLeaves(dayData?.leaves || []);
+    setSelectedDayLeaves(
+      [...(dayData?.leaves || [])].sort(
+        (a, b) => Number(b.status === 'reviewed') - Number(a.status === 'reviewed')
+      )
+    );
   };
 
   const closeModal = () => {
@@ -191,13 +219,15 @@ export default function HomePage() {
 
   const todayTeachers = useMemo(
     () =>
-      summary?.leavesByType.flatMap((group) =>
+      (summary?.leavesByType.flatMap((group) =>
         group.teachers.map((teacher) => ({
           ...teacher,
           type: group.type,
           customTypeName: group.customTypeName,
         }))
-      ) ?? [],
+      ) ?? []).sort(
+        (a, b) => Number(b.status === 'reviewed') - Number(a.status === 'reviewed')
+      ),
     [summary]
   );
 
@@ -290,11 +320,11 @@ export default function HomePage() {
         )}
 
         {/* Stats cards */}
-        <div className="grid grid-cols-1 xs:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           {/* Attending - full width on mobile */}
           <motion.div
             variants={item}
-            className="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-md shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-200 dark:border-slate-800 xs:col-span-1"
+            className="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-md shadow-slate-200/50 dark:shadow-slate-950/50 border border-slate-200 dark:border-slate-800 sm:col-span-1"
           >
             <div className="flex items-center gap-2 mb-3">
               <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
@@ -312,7 +342,7 @@ export default function HomePage() {
           </motion.div>
 
           {/* Second row wrapper for mobile (2 cards side by side) */}
-          <div className="grid grid-cols-2 xs:contents gap-2">
+          <div className="grid grid-cols-2 sm:contents gap-2">
             {/* Leaves today */}
             <motion.div
               variants={item}
@@ -421,6 +451,7 @@ export default function HomePage() {
                 })}
               </AnimatePresence>
             </motion.div>
+            <LeaveStatusIconLegend className="pt-3" />
           </motion.div>
         ) : (
           <motion.div
@@ -455,7 +486,6 @@ export default function HomePage() {
             onDayClick={handleDayClick}
             holidays={holidays}
           />
-          <LeaveStatusIconLegend className="pt-3" />
         </motion.div>
 
         {/* Modal for day details */}
@@ -512,12 +542,17 @@ export default function HomePage() {
                       );
                     })}
                   </div>
+                  <LeaveStatusIconLegend className="pt-3" />
                 </>
               )}
             </Modal>
           )}
         </AnimatePresence>
       </motion.main>
+
+      <footer className="max-w-4xl mx-auto px-4 pt-2 pb-4 text-center text-caption text-tertiary">
+        Developed by HR-NPW · © 2569
+      </footer>
 
       <AddToHomeModal />
 

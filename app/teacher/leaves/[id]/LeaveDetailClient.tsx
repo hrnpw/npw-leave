@@ -16,6 +16,7 @@ import {
   Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { fetchCache } from '@/lib/fetchCache';
 import { parseError } from '@/lib/errorMessages';
 import type { LeaveType, LeaveStatus } from '@/types/leave';
 import {
@@ -141,6 +142,8 @@ export default function LeaveDetailClient({ leaveId, teacher }: LeaveDetailClien
         throw new Error(error.error || 'เกิดข้อผิดพลาด');
       }
 
+      fetchCache.clear('/api/teacher/dashboard');
+      fetchCache.clear('/api/teacher/leaves/timeline-lazy');
       toast.success('ยกเลิกใบลาสำเร็จ');
       router.push('/teacher/history');
     } catch (error: any) {

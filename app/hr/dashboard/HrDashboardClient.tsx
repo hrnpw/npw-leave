@@ -123,6 +123,11 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
   const [changingPassword, setChangingPassword] = useState(false);
   const [isHeatmapVisible, setIsHeatmapVisible] = useState(false);
   const heatmapRef = useRef<HTMLDivElement>(null);
+  const heatmapCacheRef = useRef(
+    new Map<string, { heatmap: HeatmapDay[]; holidays: Array<{ date: string; name: string }> }>()
+  );
+  const latestHeatmapKeyRef = useRef('');
+  const heatmapLoadedRef = useRef(false);
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -182,8 +187,10 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
     [heatmapData]
   );
 
-  const refreshData = () =>
-    Promise.all([fetchSummaryData(false), isHeatmapVisible ? fetchHeatmapData(false) : null]);
+  const refreshData = () => {
+    heatmapCacheRef.current.clear();
+    return Promise.all([fetchSummaryData(false), isHeatmapVisible ? fetchHeatmapData(false) : null]);
+  };
 
   const { pull, state: pullState, threshold: pullThreshold } = usePullToRefresh(refreshData);
 
@@ -209,7 +216,12 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
 
       const data = await response.json();
       setSummary(data.summary);
-      setLeavesToday(data.leavesToday || []);
+      setLeavesToday(
+        [...(data.leavesToday || [])].sort(
+          (a: LeaveToday, b: LeaveToday) =>
+            Number(b.status === 'reviewed') - Number(a.status === 'reviewed')
+        )
+      );
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
       toast.error('ไม่สามารถโหลดข้อมูลได้');
@@ -219,24 +231,65 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
     }
   };
 
+  const loadHeatmapMonth = async (year: number, month: number) => {
+    const [heatmapRes, holidaysRes] = await Promise.all([
+      fetch(`/api/hr/dashboard/heatmap?year=${year}&month=${month}`).then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch heatmap');
+        return res.json();
+      }),
+      fetch(`/api/public/holidays?year=${year}&month=${month}`).then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch holidays');
+        return res.json();
+      }),
+    ]);
+    const entry = {
+      heatmap: (heatmapRes.heatmap || []) as HeatmapDay[],
+      holidays: (holidaysRes.holidays || []) as Array<{ date: string; name: string }>,
+    };
+    heatmapCacheRef.current.set(`${year}-${month}`, entry);
+    return entry;
+  };
+
   const fetchHeatmapData = async (showSkeleton = true) => {
     const year = selectedMonth.getFullYear();
     const month = selectedMonth.getMonth() + 1;
+    const key = `${year}-${month}`;
+    latestHeatmapKeyRef.current = key;
+
+    // Show the cached month instantly (and revalidate below); an uncached month starts empty
+    // so counts from the previous month never sit under the new month's dates.
+    const cached = heatmapCacheRef.current.get(key);
+    if (cached) {
+      setHeatmapData(cached.heatmap);
+      setHolidays(cached.holidays);
+    } else if (showSkeleton) {
+      setHeatmapData([]);
+      setHolidays([]);
+    }
 
     try {
-      if (showSkeleton) setLoadingHeatmap(true);
+      // Skeleton only for the very first load; later it would replace the grid and kill the slide animation
+      if (showSkeleton && !heatmapLoadedRef.current) setLoadingHeatmap(true);
 
-      const [heatmapRes, holidaysRes] = await Promise.all([
-        fetch(`/api/hr/dashboard/heatmap?year=${year}&month=${month}`).then((res) => res.json()),
-        fetch(`/api/public/holidays?year=${year}&month=${month}`).then((res) => res.json()),
-      ]);
+      const entry = await loadHeatmapMonth(year, month);
+      if (latestHeatmapKeyRef.current !== key) return;
 
-      setHeatmapData(heatmapRes.heatmap || []);
-      setHolidays(holidaysRes.holidays || []);
+      heatmapLoadedRef.current = true;
+      setHeatmapData(entry.heatmap);
+      setHolidays(entry.holidays);
+
+      // Warm the neighbouring months so the next click is instant
+      [new Date(year, month - 2, 1), new Date(year, month, 1)].forEach((d) => {
+        const y = d.getFullYear();
+        const m = d.getMonth() + 1;
+        if (!heatmapCacheRef.current.has(`${y}-${m}`)) {
+          loadHeatmapMonth(y, m).catch(() => {});
+        }
+      });
     } catch (err) {
       console.error('Failed to fetch heatmap:', err);
     } finally {
-      setLoadingHeatmap(false);
+      if (latestHeatmapKeyRef.current === key) setLoadingHeatmap(false);
     }
   };
 
@@ -631,6 +684,7 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                       </div>
                     );
                   })}
+                  <LeaveStatusIconLegend className="pt-1" />
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-12">
@@ -664,12 +718,18 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                 onMonthChange={setSelectedMonth}
                 onDayClick={(date) => {
                   const day = heatmapData.find((d) => d.date === date);
-                  if (day) setSelectedDay(day);
+                  if (day) {
+                    setSelectedDay({
+                      ...day,
+                      leaves: [...day.leaves].sort(
+                        (a, b) => Number(b.status === 'reviewed') - Number(a.status === 'reviewed')
+                      ),
+                    });
+                  }
                 }}
                 holidays={holidays}
                 loading={loadingHeatmap}
               />
-              <LeaveStatusIconLegend className="pt-3" />
             </motion.div>
           </div>
 
@@ -853,11 +913,16 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                     </div>
                   );
                 })}
+                <LeaveStatusIconLegend className="pt-1" />
               </div>
             </Modal>
           )}
           </AnimatePresence>
         </main>
+
+        <footer className="max-w-7xl mx-auto px-4 pt-2 pb-4 text-center text-caption text-tertiary">
+          Developed by HR-NPW · © 2569
+        </footer>
 
         {/* Change Password Dialog */}
         <AnimatePresence>
