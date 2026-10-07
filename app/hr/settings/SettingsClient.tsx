@@ -9,8 +9,6 @@ import {
   AlertCircle,
   CheckCircle2,
   Send,
-  Eye,
-  EyeOff,
   Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -48,8 +46,6 @@ interface Settings {
   requireTeacherSignature: boolean;
   currentDirectorId: string | null;
   currentHrHeadId: string | null;
-  telegramBotToken: string | null;
-  telegramChatId: string | null;
 }
 
 export default function SettingsClient({ hrUser }: SettingsClientProps) {
@@ -61,7 +57,6 @@ export default function SettingsClient({ hrUser }: SettingsClientProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testingTelegram, setTestingTelegram] = useState(false);
-  const [showToken, setShowToken] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -74,8 +69,6 @@ export default function SettingsClient({ hrUser }: SettingsClientProps) {
     requireTeacherSignature: false,
     currentDirectorId: '',
     currentHrHeadId: '',
-    telegramBotToken: '',
-    telegramChatId: '',
   });
 
 
@@ -104,8 +97,6 @@ export default function SettingsClient({ hrUser }: SettingsClientProps) {
           requireTeacherSignature: data.requireTeacherSignature || false,
           currentDirectorId: data.currentDirectorId || '',
           currentHrHeadId: data.currentHrHeadId || '',
-          telegramBotToken: data.telegramBotToken || '',
-          telegramChatId: data.telegramChatId || '',
         });
       }
 
@@ -177,8 +168,6 @@ export default function SettingsClient({ hrUser }: SettingsClientProps) {
         payload.quotaMaternity = formData.quotaMaternity;
         payload.quotaReligious = formData.quotaReligious;
         payload.requireTeacherSignature = formData.requireTeacherSignature;
-        payload.telegramBotToken = formData.telegramBotToken.trim() || null;
-        payload.telegramChatId = formData.telegramChatId.trim() || null;
       }
 
       const response = await fetch('/api/hr/settings', {
@@ -610,70 +599,24 @@ export default function SettingsClient({ hrUser }: SettingsClientProps) {
               </div>
 
               <div className="space-y-4">
-                {/* Bot Token */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                    Bot Token
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showToken ? 'text' : 'password'}
-                      value={formData.telegramBotToken}
-                      onChange={(e) =>
-                        setFormData({ ...formData, telegramBotToken: e.target.value })
-                      }
-                      className="w-full px-4 py-3 pr-12 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-sky-400 font-mono text-sm"
-                      placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowToken(!showToken)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                      aria-label={showToken ? 'ซ่อน' : 'แสดง'}
-                    >
-                      {showToken ? (
-                        <EyeOff className="w-4 h-4 text-slate-500" />
-                      ) : (
-                        <Eye className="w-4 h-4 text-slate-500" />
-                      )}
-                    </button>
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    ได้จาก @BotFather บน Telegram
-                  </p>
-                </div>
-
-                {/* Chat ID */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                    Chat ID
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.telegramChatId}
-                    onChange={(e) =>
-                      setFormData({ ...formData, telegramChatId: e.target.value })
-                    }
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-sky-400 font-mono text-sm"
-                    placeholder="-1001234567890"
-                  />
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    Group chat ID (เริ่มด้วย - สำหรับกลุ่ม)
-                  </p>
-                </div>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Bot Token และ Chat ID ตั้งค่าผ่าน Environment Variables บน Vercel
+                  (<span className="font-mono text-xs">TELEGRAM_BOT_TOKEN</span>,{' '}
+                  <span className="font-mono text-xs">TELEGRAM_CHAT_ID</span>)
+                </p>
 
                 {/* Test Button */}
                 <div>
                   <button
                     onClick={handleTestTelegram}
-                    disabled={testingTelegram || !formData.telegramBotToken || !formData.telegramChatId}
+                    disabled={testingTelegram}
                     className="w-full sm:w-auto px-6 py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2 disabled:cursor-not-allowed"
                   >
                     <Send className="w-4 h-4" />
                     {testingTelegram ? 'กำลังส่ง...' : 'ทดสอบส่งข้อความ'}
                   </button>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                    ส่งข้อความทดสอบไปยังกลุ่ม Telegram ที่ตั้งค่าไว้
+                    ส่งข้อความทดสอบไปยังกลุ่ม Telegram ตามค่า env ที่ตั้งไว้บน Vercel
                   </p>
                 </div>
               </div>

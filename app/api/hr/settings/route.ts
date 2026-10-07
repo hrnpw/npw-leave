@@ -20,16 +20,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Settings not found' }, { status: 404 });
     }
 
-    // Mask Telegram token สำหรับ HR ธรรมดา
-    const response = {
-      ...settings,
-      telegramBotToken:
-        session.role === 'super_admin' && settings.telegramBotToken
-          ? settings.telegramBotToken
-          : settings.telegramBotToken
-          ? '••••••••••' + settings.telegramBotToken.slice(-4)
-          : null,
-    };
+    const { telegramBotToken: _token, telegramChatId: _chatId, ...response } = settings;
 
     return NextResponse.json(response, {
       headers: noCacheHeaders,
@@ -60,8 +51,6 @@ export async function PATCH(req: NextRequest) {
       requireTeacherSignature,
       currentDirectorId,
       currentHrHeadId,
-      telegramBotToken,
-      telegramChatId,
     } = body;
 
     // ตรวจสอบสิทธิ์ตามตาราง 2.3
@@ -71,8 +60,6 @@ export async function PATCH(req: NextRequest) {
       'quotaReligious',
       'requireTeacherSignature',
       'systemStartDate',
-      'telegramBotToken',
-      'telegramChatId',
     ];
 
     const requestedFields = Object.keys(body);
@@ -183,8 +170,6 @@ export async function PATCH(req: NextRequest) {
       updateData.requireTeacherSignature = requireTeacherSignature;
     if (currentDirectorId !== undefined) updateData.currentDirectorId = currentDirectorId;
     if (currentHrHeadId !== undefined) updateData.currentHrHeadId = currentHrHeadId;
-    if (telegramBotToken !== undefined) updateData.telegramBotToken = telegramBotToken;
-    if (telegramChatId !== undefined) updateData.telegramChatId = telegramChatId;
 
     const updated = await prisma.settings.update({
       where: { id: 'singleton' },

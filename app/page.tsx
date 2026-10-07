@@ -489,13 +489,13 @@ export default function HomePage() {
                           key={leave.id}
                           className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg"
                         >
-                          <div className="flex items-center gap-2 flex-wrap">
+                          <div className="flex items-center gap-2 min-w-0">
                             <LeaveStatusIcon status={leave.status} />
-                            <p className="font-medium text-body-sm min-w-0 truncate" title={fullName}>
+                            <p className="font-medium text-body-sm min-w-0 max-w-[55%] flex-shrink-0 truncate" title={fullName}>
                               {fullName}
                             </p>
                             {leave.department && (
-                              <span className="text-caption text-secondary truncate" title={leave.department}>
+                              <span className="text-caption text-secondary min-w-0 flex-1 truncate" title={leave.department}>
                                 • {leave.department}
                               </span>
                             )}

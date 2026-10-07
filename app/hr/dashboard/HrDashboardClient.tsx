@@ -21,12 +21,22 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { LeaveStatusIcon, LeaveStatusIconLegend } from '@/components/LeaveStatusIcon';
 import { toast } from 'sonner';
 import { CountUp } from '@/components/CountUp';
-import { formatFullThaiDate, formatThaiDate } from '@/lib/thaiDate';
+import { formatFullThaiDate } from '@/lib/thaiDate';
+import { Modal } from '@/components/Modal';
 import { clearClientCaches } from '@/lib/clearClientCaches';
 import HrLayoutWrapper from '@/components/hr/HrLayoutWrapper';
 import { HeatmapCalendar } from '@/components/HeatmapCalendar';
 import { type HrRole } from '@/lib/roles';
-import { LEAVE_STATUS_LABELS, LEAVE_STATUS_COLORS, type LeaveStatus } from '@/types/leave';
+import {
+  LEAVE_STATUS_LABELS,
+  LEAVE_STATUS_COLORS,
+  LEAVE_TYPE_LABELS,
+  LEAVE_TYPE_COLORS,
+  HALF_DAY_PERIOD_LABELS,
+  type LeaveStatus,
+  type LeaveType,
+  type HalfDayPeriod,
+} from '@/types/leave';
 
 interface HrDashboardClientProps {
   user: {
@@ -83,10 +93,10 @@ interface HeatmapDay {
       name: string;
       department: string | null;
     };
-    type: string;
+    type: LeaveType;
     customTypeName: string | null;
     isHalfDay: boolean;
-    halfDayPeriod: string | null;
+    halfDayPeriod: HalfDayPeriod | null;
     status: LeaveStatus;
   }>;
 }
@@ -791,56 +801,21 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
           {/* Selected Day Detail Modal */}
           <AnimatePresence>
           {selectedDay && (
-            <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedDay(null)}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
-            />
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto pointer-events-auto"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                    {formatThaiDate(new Date(selectedDay.date), 'd MMMM yyyy')}
-                  </h3>
-                  <button
-                    onClick={() => setSelectedDay(null)}
-                    className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <span className="text-slate-500 text-xl">×</span>
-                  </button>
-                </div>
+            <Modal
+              key={selectedDay.date}
+              title={formatFullThaiDate(new Date(selectedDay.date))}
+              onClose={() => setSelectedDay(null)}
+            >
+              <p className="text-body-sm text-secondary mb-3">
+                มีครู {selectedDay.count} คนลาในวันนี้
+              </p>
 
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
-                  มีครู {selectedDay.count} คนลาในวันนี้
-                </p>
-
-                <div className="space-y-2">
-                  {selectedDay.leaves.map((leave) => {
-                    const typeLabels: Record<string, string> = {
-                      sick: 'ลาป่วย',
-                      personal: 'ลากิจ',
-                      maternity: 'ลาคลอด',
-                      religious: 'ลาทางศาสนา',
-                      other: 'อื่นๆ'
-                    };
-
-                    const typeColors: Record<string, string> = {
-                      sick: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-                      personal: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-                      maternity: 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400',
-                      religious: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-                      other: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
-                    };
+              <div className="space-y-2">
+                {selectedDay.leaves.map((leave) => {
+                  const colorClass = LEAVE_TYPE_COLORS[leave.type] ?? LEAVE_TYPE_COLORS.other;
+                  const typeLabel = leave.type === 'other' && leave.customTypeName
+                    ? leave.customTypeName
+                    : LEAVE_TYPE_LABELS[leave.type] ?? LEAVE_TYPE_LABELS.other;
 
                   return (
                     <div
@@ -852,22 +827,22 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                       className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
                           <LeaveStatusIcon status={leave.status} />
-                          <p className="font-medium text-sm text-slate-900 dark:text-slate-100">
+                          <p className="font-medium text-sm text-slate-900 dark:text-slate-100 min-w-0 max-w-[55%] flex-shrink-0 truncate" title={leave.teacher.name}>
                             {leave.teacher.name}
                           </p>
                           {leave.teacher.department && (
-                            <span className="text-xs text-slate-500 dark:text-slate-400">
+                            <span className="text-xs text-slate-500 dark:text-slate-400 min-w-0 flex-1 truncate" title={leave.teacher.department}>
                               • {leave.teacher.department}
                             </span>
                           )}
-                          <span className={`px-1.5 py-0.5 text-xs rounded ${typeColors[leave.type]}`}>
-                            {leave.type === 'other' && leave.customTypeName ? leave.customTypeName : typeLabels[leave.type]}
+                          <span className={`px-1.5 py-0.5 text-xs rounded flex-shrink-0 ${colorClass.light} ${colorClass.dark}`}>
+                            {typeLabel}
                           </span>
-                          {leave.isHalfDay && (
-                            <span className="px-1.5 py-0.5 text-xs rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                              {leave.halfDayPeriod === 'morning' ? 'ครึ่งเช้า' : 'ครึ่งบ่าย'}
+                          {leave.isHalfDay && leave.halfDayPeriod && (
+                            <span className="px-1.5 py-0.5 text-xs rounded flex-shrink-0 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                              {HALF_DAY_PERIOD_LABELS[leave.halfDayPeriod]}
                             </span>
                           )}
                         </div>
@@ -875,11 +850,9 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                       </div>
                     </div>
                   );
-                  })}
-                </div>
-              </motion.div>
-            </div>
-            </>
+                })}
+              </div>
+            </Modal>
           )}
           </AnimatePresence>
         </main>

@@ -37,11 +37,9 @@ export async function GET(req: NextRequest) {
     const blobPercent = ((r2UsedBytes / (blobTotalMB * 1024 * 1024)) * 100);
 
     // 3. Telegram status
-    const settings = await prisma.settings.findUnique({
-      where: { id: 'singleton' },
-      select: { telegramBotToken: true, telegramChatId: true },
-    });
-    const telegramConfigured = !!(settings?.telegramBotToken && settings?.telegramChatId);
+    const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
+    const telegramChatId = process.env.TELEGRAM_CHAT_ID;
+    const telegramConfigured = !!(telegramBotToken && telegramChatId);
 
     // 4. Cron last run (ดูจาก audit log)
     const lastCronLog = await prisma.auditLog.findFirst({
@@ -71,8 +69,8 @@ export async function GET(req: NextRequest) {
       },
       telegram: {
         configured: telegramConfigured,
-        botToken: settings?.telegramBotToken ? '••••••••' : null,
-        chatId: settings?.telegramChatId || null,
+        botToken: telegramBotToken ? '••••••••' : null,
+        chatId: telegramChatId || null,
       },
       cron: {
         lastRun: lastCronLog?.createdAt || null,
