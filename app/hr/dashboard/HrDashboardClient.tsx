@@ -603,19 +603,21 @@ export default function HrDashboardClient({ user }: HrDashboardClientProps) {
                       >
                         <div className="flex items-start justify-between gap-3 mb-2">
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <LeaveStatusIcon status={leave.status} />
-                              <p className="font-medium text-sm text-slate-900 dark:text-slate-100">
+                            <div className="flex items-center gap-2 flex-nowrap">
+                              <span className="shrink-0">
+                                <LeaveStatusIcon status={leave.status} />
+                              </span>
+                              <p className="font-medium text-sm text-slate-900 dark:text-slate-100 shrink-0 whitespace-nowrap">
                                 {leave.teacher.name}
                               </p>
-                              <span className="text-xs text-slate-500 dark:text-slate-400">
+                              <span className="text-xs text-slate-500 dark:text-slate-400 min-w-0 truncate">
                                 • {leave.teacher.department || 'ไม่ระบุกลุ่มสาระ'}
                               </span>
-                              <span className={`px-1.5 py-0.5 text-xs rounded ${typeColors[leave.type]}`}>
+                              <span className={`px-1.5 py-0.5 text-xs rounded shrink-0 whitespace-nowrap ${typeColors[leave.type]}`}>
                                 {leave.type === 'other' && leave.customTypeName ? leave.customTypeName : typeLabels[leave.type]}
                               </span>
                               {leave.isHalfDay && (
-                                <span className="px-1.5 py-0.5 text-xs rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                                <span className="px-1.5 py-0.5 text-xs rounded shrink-0 whitespace-nowrap bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                                   {leave.halfDayPeriod === 'morning' ? 'ครึ่งเช้า' : 'ครึ่งบ่าย'}
                                 </span>
                               )}

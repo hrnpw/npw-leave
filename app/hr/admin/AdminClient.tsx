@@ -462,7 +462,7 @@ export default function AdminClient({ hrUser }: AdminClientProps) {
         role: hrUser.role,
       }}
     >
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24 lg:pb-8">
         {/* Header */}
         <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
           <div className="max-w-7xl mx-auto px-4 py-6">
@@ -485,51 +485,29 @@ export default function AdminClient({ hrUser }: AdminClientProps) {
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-2 mt-6 overflow-x-auto pb-2">
-              <button
-                onClick={() => setActiveTab('users')}
-                className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${
-                  activeTab === 'users'
-                    ? 'bg-orange-600 dark:bg-orange-500 text-white'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                <Users className="w-4 h-4 inline mr-2" />
-                จัดการบัญชี
-              </button>
-              <button
-                onClick={() => setActiveTab('status')}
-                className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${
-                  activeTab === 'status'
-                    ? 'bg-orange-600 dark:bg-orange-500 text-white'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                <Activity className="w-4 h-4 inline mr-2" />
-                สถานะระบบ
-              </button>
-              <button
-                onClick={() => setActiveTab('audit')}
-                className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${
-                  activeTab === 'audit'
-                    ? 'bg-orange-600 dark:bg-orange-500 text-white'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                <FileText className="w-4 h-4 inline mr-2" />
-                Audit Log
-              </button>
-              <button
-                onClick={() => setActiveTab('danger')}
-                className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${
-                  activeTab === 'danger'
-                    ? 'bg-red-600 dark:bg-red-500 text-white'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                <AlertTriangle className="w-4 h-4 inline mr-2" />
-                โซนอันตราย
-              </button>
+            <div className="grid grid-cols-4 gap-1.5 sm:gap-2 mt-6" role="tablist">
+              {([
+                { id: 'users', icon: Users, short: 'บัญชี', full: 'จัดการบัญชี', active: 'bg-orange-600 dark:bg-orange-500', iconColor: 'text-sky-600 dark:text-sky-400' },
+                { id: 'status', icon: Activity, short: 'ระบบ', full: 'สถานะระบบ', active: 'bg-orange-600 dark:bg-orange-500', iconColor: 'text-emerald-600 dark:text-emerald-400' },
+                { id: 'audit', icon: FileText, short: 'Log', full: 'Audit Log', active: 'bg-orange-600 dark:bg-orange-500', iconColor: 'text-violet-600 dark:text-violet-400' },
+                { id: 'danger', icon: AlertTriangle, short: 'อันตราย', full: 'โซนอันตราย', active: 'bg-red-600 dark:bg-red-500', iconColor: 'text-red-600 dark:text-red-400' },
+              ] as const).map(({ id, icon: Icon, short, full, active, iconColor }) => (
+                <button
+                  key={id}
+                  role="tab"
+                  aria-selected={activeTab === id}
+                  onClick={() => setActiveTab(id)}
+                  className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-1 sm:px-4 py-2 rounded-lg text-xs sm:text-base font-medium whitespace-nowrap transition-colors ${
+                    activeTab === id
+                      ? `${active} text-white`
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <Icon className={`w-5 h-5 sm:w-4 sm:h-4 ${activeTab === id ? 'text-white' : iconColor}`} />
+                  <span className="sm:hidden">{short}</span>
+                  <span className="hidden sm:inline">{full}</span>
+                </button>
+              ))}
             </div>
           </div>
         </header>

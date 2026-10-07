@@ -17,12 +17,14 @@ export default function HrBottomNav({ counts }: HrBottomNavProps) {
       href: '/hr/dashboard',
       label: 'Dashboard',
       icon: LayoutDashboard,
+      iconColor: 'text-blue-500',
       active: pathname === '/hr/dashboard',
     },
     {
       href: '/hr/reviews',
       label: 'รอตรวจสอบ',
       icon: ClipboardList,
+      iconColor: 'text-orange-500',
       active: pathname === '/hr/reviews',
       badge: counts.pending > 0 ? counts.pending : undefined,
     },
@@ -30,6 +32,7 @@ export default function HrBottomNav({ counts }: HrBottomNavProps) {
       href: '/hr/approvals',
       label: 'รออนุมัติ',
       icon: ClipboardCheck,
+      iconColor: 'text-sky-500',
       active: pathname === '/hr/approvals',
       badge: counts.reviewed > 0 ? counts.reviewed : undefined,
     },
@@ -37,12 +40,14 @@ export default function HrBottomNav({ counts }: HrBottomNavProps) {
       href: '/hr/leaves',
       label: 'ใบลา',
       icon: FileText,
+      iconColor: 'text-green-500',
       active: pathname === '/hr/leaves',
     },
     {
       href: '/hr/menu',
       label: 'เพิ่มเติม',
       icon: Menu,
+      iconColor: 'text-indigo-500',
       active: pathname.startsWith('/hr/menu') ||
              pathname.startsWith('/hr/teachers') ||
              pathname.startsWith('/hr/holidays') ||
@@ -73,7 +78,7 @@ export default function HrBottomNav({ counts }: HrBottomNavProps) {
               `}
             >
               <div className="relative">
-                <Icon className="w-5 h-5" />
+                <Icon className={`w-5 h-5 ${item.iconColor}`} />
                 {item.badge !== undefined && item.badge > 0 && (
                   <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
                     {item.badge > 99 ? '99+' : item.badge}
