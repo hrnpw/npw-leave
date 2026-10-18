@@ -233,7 +233,7 @@ export default function HomePage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center p-4">
         <div className="text-center">
           <p className="text-slate-600 dark:text-slate-400 mb-4">{error}</p>
           <button
@@ -251,11 +251,11 @@ export default function HomePage() {
 
   return (
     <MotionConfig reducedMotion="user">
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 pb-24">
       <PullToRefreshIndicator pull={pull} state={pullState} threshold={pullThreshold} />
       {/* Header */}
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
-        <div className="max-w-4xl mx-auto px-4 py-4">
+        <div className="max-w-4xl mx-auto px-4 py-3">
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="min-w-0 flex-1 flex items-center gap-3">
               <motion.div
@@ -266,8 +266,8 @@ export default function HomePage() {
                 <Image
                   src="/icons/icon-192.png"
                   alt="โรงเรียนบ้านเนินพลับหวาน"
-                  width={80}
-                  height={80}
+                  width={64}
+                  height={64}
                   className="flex-shrink-0"
                   priority
                 />
