@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Check, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, AlertTriangle, CalendarClock, Cross } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDateForAPI } from '@/lib/dateFormat';
 import type { LeaveType, HalfDayPeriod } from '@/types/leave';
@@ -40,6 +40,8 @@ export interface LeaveFormData {
 }
 
 const STORAGE_KEY = 'teacher_leave_draft';
+// Restrict this page's choices only; HR and existing leave records retain all types.
+const TEACHER_LEAVE_TYPES: LeaveType[] = ['sick', 'personal'];
 
 export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
   const router = useRouter();
@@ -119,14 +121,19 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
 
     try {
       const draft = JSON.parse(raw);
+      const isAvailableType = TEACHER_LEAVE_TYPES.includes(draft.type);
       setFormData(prev => ({
         ...prev,
         ...draft,
+        type: isAvailableType ? draft.type : null,
+        customTypeName: '',
         startDate: draft.startDate ? new Date(draft.startDate) : null,
         endDate: draft.endDate ? new Date(draft.endDate) : null,
         files: [],
       }));
-      if (draft.currentStep) {
+      if (!isAvailableType) {
+        setCurrentStep(1);
+      } else if (draft.currentStep) {
         setCurrentStep(draft.currentStep);
       }
       localStorage.removeItem(STORAGE_KEY);
@@ -471,6 +478,12 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
               onNext={handleNext}
               direction={direction}
               showDesktopNext
+              allowedTypes={TEACHER_LEAVE_TYPES}
+              notice="การลาประเภทอื่นๆ กรุณาติดต่อกลุ่มบริหารงานบุคคล"
+              iconOverrides={{
+                sick: <Cross className="w-8 h-8 fill-current text-red-600 dark:text-red-400" strokeWidth={0} aria-hidden="true" />,
+                personal: <CalendarClock className="w-8 h-8 text-blue-600 dark:text-blue-400" aria-hidden="true" />,
+              }}
             />
           )}
 

@@ -14,6 +14,9 @@ interface LeaveTypeStepProps {
   onNext: () => void;
   direction?: number;
   showDesktopNext?: boolean;
+  allowedTypes?: LeaveType[];
+  notice?: string;
+  iconOverrides?: Partial<Record<LeaveType, React.ReactNode>>;
 }
 
 const leaveTypes: Array<{ type: LeaveType; icon: React.ReactNode; description: string }> = [
@@ -44,7 +47,7 @@ const leaveTypes: Array<{ type: LeaveType; icon: React.ReactNode; description: s
   },
 ];
 
-export default function LeaveTypeStep({ formData, updateFormData, onNext, direction = 1, showDesktopNext = false }: LeaveTypeStepProps) {
+export default function LeaveTypeStep({ formData, updateFormData, onNext, direction = 1, showDesktopNext = false, allowedTypes, notice, iconOverrides }: LeaveTypeStepProps) {
   // The delayed advance must call the onNext from a later render, otherwise it
   // still sees formData.type === null and never leaves this step.
   const onNextRef = useRef(onNext);
@@ -101,7 +104,7 @@ export default function LeaveTypeStep({ formData, updateFormData, onNext, direct
       </div>
 
       <div className="grid gap-3">
-        {leaveTypes.map((item, idx) => {
+        {leaveTypes.filter((item) => !allowedTypes || allowedTypes.includes(item.type)).map((item, idx) => {
           if (!item || !item.type) return null;
 
           const colors = LEAVE_TYPE_COLORS[item.type];
@@ -126,11 +129,13 @@ export default function LeaveTypeStep({ formData, updateFormData, onNext, direct
               <div className="flex items-start gap-4">
                 <div
                   className={`
-                    p-3 rounded-xl
-                    ${isSelected ? 'bg-white/50 dark:bg-slate-800/50' : 'bg-slate-100 dark:bg-slate-800'}
+                    p-3 rounded-xl shrink-0
+                    ${iconOverrides?.[item.type]
+                      ? `${colors.light} ${colors.dark}`
+                      : isSelected ? 'bg-white/50 dark:bg-slate-800/50' : 'bg-slate-100 dark:bg-slate-800'}
                   `}
                 >
-                  {item.icon}
+                  {iconOverrides?.[item.type] ?? item.icon}
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-1">
@@ -155,8 +160,14 @@ export default function LeaveTypeStep({ formData, updateFormData, onNext, direct
         })}
       </div>
 
+      {notice && (
+        <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+          {notice}
+        </p>
+      )}
+
       {/* Custom type name input (for "other") */}
-      {formData.type === 'other' && (
+      {formData.type === 'other' && (!allowedTypes || allowedTypes.includes('other')) && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
