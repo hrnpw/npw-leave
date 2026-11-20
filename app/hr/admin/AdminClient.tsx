@@ -151,8 +151,12 @@ export default function AdminClient({ hrUser }: AdminClientProps) {
   useEffect(() => {
     if (activeTab === 'users') fetchUsers();
     if (activeTab === 'status') fetchSystemStatus();
-    if (activeTab === 'audit') fetchAuditLogs();
   }, [activeTab]);
+
+  // โหลด audit log ใหม่เมื่อเปิดแท็บหรือเปลี่ยนหน้า (ตัวกรองใช้ปุ่ม "ค้นหา")
+  useEffect(() => {
+    if (activeTab === 'audit') fetchAuditLogs();
+  }, [activeTab, auditPage]);
 
   const fetchUsers = async () => {
     try {
@@ -885,7 +889,7 @@ export default function AdminClient({ hrUser }: AdminClientProps) {
                   </div>
                   <div className="flex gap-3">
                     <button
-                      onClick={fetchAuditLogs}
+                      onClick={() => (auditPage === 1 ? fetchAuditLogs() : setAuditPage(1))}
                       className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-medium transition-colors text-sm"
                     >
                       <Search className="w-4 h-4 inline mr-2" />

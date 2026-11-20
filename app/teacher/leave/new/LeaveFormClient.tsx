@@ -212,6 +212,13 @@ export default function LeaveFormClient({ teacher }: LeaveFormClientProps) {
       return;
     }
 
+    if (formData.reason.trim().length > 60) {
+      toast.error('เหตุผลการลายาวเกินไป', {
+        description: `กรุณากรอกไม่เกิน 60 ตัวอักษร (ปัจจุบัน ${formData.reason.trim().length} ตัวอักษร)`
+      });
+      return;
+    }
+
     if (!formData.contactAddress.trim()) {
       toast.error('กรุณากรอกที่อยู่ติดต่อระหว่างลา', {
         description: 'ระบุที่อยู่ที่สามารถติดต่อท่านได้ระหว่างวันลา'

@@ -13,14 +13,27 @@ export async function GET() {
 
     const rows = await prisma.teacher.findMany({
       where: { isActive: true, department: { not: null } },
-      select: { department: true },
-      distinct: ['department'],
-      orderBy: { department: 'asc' },
+      select: { department: true, teacherCode: true },
     });
 
-    const departments = rows
-      .map((r) => r.department)
-      .filter((d): d is string => !!d);
+    // เรียงตามรหัสกลุ่มสาระ = 2 ตัวแรกของรหัสครู (เช่น 1101 -> "11")
+    // กลุ่มที่มีครูหลายรหัสใช้ค่าน้อยที่สุด ถ้ารหัสเท่ากันเรียงตามชื่อ
+    const prefixByDept = new Map<string, string>();
+    for (const r of rows) {
+      if (!r.department) continue;
+      const prefix = r.teacherCode.slice(0, 2);
+      const current = prefixByDept.get(r.department);
+      if (current === undefined || prefix < current) {
+        prefixByDept.set(r.department, prefix);
+      }
+    }
+
+    const departments = [...prefixByDept.entries()]
+      .sort(
+        ([nameA, prefixA], [nameB, prefixB]) =>
+          prefixA.localeCompare(prefixB) || nameA.localeCompare(nameB, 'th')
+      )
+      .map(([name]) => name);
 
     return NextResponse.json(
       { departments },

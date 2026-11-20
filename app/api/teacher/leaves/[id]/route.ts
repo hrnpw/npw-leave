@@ -86,6 +86,8 @@ export async function GET(
         reviewedAt: leave.reviewedAt?.toISOString() || null,
         approvedAt: leave.approvedAt?.toISOString() || null,
         printedAt: leave.printedAt?.toISOString() || null,
+        // ครูเปิดดู PDF ได้เมื่อ HR พิมพ์แล้วและมีไฟล์เก็บไว้เท่านั้น
+        pdfReady: leave.status === 'approved' && !!leave.printedAt && !!leave.pdfUrl,
       },
     };
 

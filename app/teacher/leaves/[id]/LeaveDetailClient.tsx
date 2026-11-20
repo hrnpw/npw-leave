@@ -73,6 +73,7 @@ interface Leave {
   reviewedAt?: string | null;
   approvedAt?: string | null;
   printedAt?: string | null;
+  pdfReady?: boolean;
 }
 
 interface TimelineEvent {
@@ -165,6 +166,37 @@ export default function LeaveDetailClient({ leaveId, teacher }: LeaveDetailClien
         return '⊗';
       default:
         return '⏱';
+    }
+  };
+
+  const [isOpeningPdf, setIsOpeningPdf] = useState(false);
+
+  const handleViewPdf = async () => {
+    if (!leave || isOpeningPdf) return;
+
+    // เปิดแท็บก่อน await เพื่อไม่ให้ browser (โดยเฉพาะ mobile) บล็อก popup
+    const pdfWindow = window.open('', '_blank');
+
+    try {
+      setIsOpeningPdf(true);
+      const res = await fetch(`/api/teacher/leaves/${leave.id}/pdf`);
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || 'ไม่สามารถเปิดไฟล์ใบลาได้');
+      }
+
+      const url = window.URL.createObjectURL(await res.blob());
+      if (pdfWindow) {
+        pdfWindow.location.href = url;
+      } else {
+        window.location.href = url;
+      }
+    } catch (error) {
+      pdfWindow?.close();
+      toast.error(error instanceof Error ? error.message : 'ไม่สามารถเปิดไฟล์ใบลาได้');
+    } finally {
+      setIsOpeningPdf(false);
     }
   };
 
@@ -380,6 +412,40 @@ export default function LeaveDetailClient({ leaveId, teacher }: LeaveDetailClien
             </div>
           </div>
         </motion.div>
+
+        {/* ใบลา PDF (เฉพาะที่ HR พิมพ์แล้ว) */}
+        {leave.pdfReady && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12 }}
+            className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-4"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <h2 className="font-semibold text-slate-900 dark:text-slate-100">
+                ไฟล์ใบลา
+              </h2>
+            </div>
+            <button
+              onClick={handleViewPdf}
+              disabled={isOpeningPdf}
+              className="w-full px-4 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2 active:scale-[0.98]"
+            >
+              {isOpeningPdf ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  กำลังเปิดไฟล์...
+                </>
+              ) : (
+                <>
+                  <FileText className="w-5 h-5" />
+                  ดูใบลา (PDF)
+                </>
+              )}
+            </button>
+          </motion.div>
+        )}
 
         {/* Attachments */}
         {leave.attachments && leave.attachments.length > 0 && (

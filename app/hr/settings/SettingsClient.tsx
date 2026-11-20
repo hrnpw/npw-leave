@@ -288,7 +288,7 @@ export default function SettingsClient({ hrUser }: SettingsClientProps) {
           </div>
         </header>
 
-        <main className="max-w-4xl mx-auto px-4 py-6 space-y-6 pb-24">
+        <main className="max-w-4xl mx-auto px-4 py-6 space-y-6 pb-44 lg:pb-24">
           {/* General Settings */}
           <motion.section
             initial={{ opacity: 0, y: 20 }}
@@ -624,28 +624,24 @@ export default function SettingsClient({ hrUser }: SettingsClientProps) {
           )}
         </main>
 
-        {/* Fixed Save Button */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 md:pl-64 safe-area-bottom z-10">
-          <div className="max-w-4xl mx-auto flex items-center gap-3">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 disabled:from-slate-300 disabled:to-slate-300 dark:disabled:from-slate-700 dark:disabled:to-slate-700 text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2 shadow-lg disabled:cursor-not-allowed active:scale-[0.97]"
-            >
-              {saving ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  กำลังบันทึก...
-                </>
-              ) : (
-                <>
-                  <Save className="w-5 h-5" />
-                  บันทึกการตั้งค่า
-                </>
-              )}
-            </button>
-          </div>
-        </div>
+        {/* Floating Save Button: บน mobile ยกขึ้นเหนือ HrBottomNav (h-16 + pb-safe + border) */}
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="fixed right-4 bottom-[calc(4rem+max(0.75rem,env(safe-area-inset-bottom))+1px+1rem)] lg:right-6 lg:bottom-6 z-20 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 disabled:from-slate-300 disabled:to-slate-300 dark:disabled:from-slate-700 dark:disabled:to-slate-700 text-white rounded-full font-medium transition-all flex items-center justify-center gap-2 shadow-lg shadow-orange-500/30 disabled:shadow-none disabled:cursor-not-allowed active:scale-[0.97]"
+        >
+          {saving ? (
+            <>
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              กำลังบันทึก...
+            </>
+          ) : (
+            <>
+              <Save className="w-5 h-5" />
+              บันทึก
+            </>
+          )}
+        </button>
       </div>
     </HrLayoutWrapper>
   );

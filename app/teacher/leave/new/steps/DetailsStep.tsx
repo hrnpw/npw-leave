@@ -231,11 +231,11 @@ export default function DetailsStep({ formData, updateFormData, onNext, onSubmit
         </label>
         <textarea
           value={formData.reason}
-          onChange={(e) => updateFormData({ reason: e.target.value })}
-          placeholder="กรุณาระบุเหตุผลการลาอย่างละเอียด (อย่างน้อย 10 ตัวอักษร)"
+          onChange={(e) => updateFormData({ reason: e.target.value.slice(0, 60) })}
+          placeholder="กรุณาระบุเหตุผลการลา (10-60 ตัวอักษร)"
           rows={4}
           minLength={10}
-          maxLength={500}
+          maxLength={60}
           required
           className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all resize-none shadow-sm"
         />
@@ -244,7 +244,7 @@ export default function DetailsStep({ formData, updateFormData, onNext, onSubmit
             {formData.reason.length < 10 ? `ต้องการอีก ${10 - formData.reason.length} ตัวอักษร` : '✓ เหตุผลครบถ้วน'}
           </p>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            {formData.reason.length}/500
+            {formData.reason.length}/60
           </p>
         </div>
       </div>

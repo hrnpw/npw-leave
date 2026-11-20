@@ -75,6 +75,7 @@ export default function TeachersClient({ hrUser }: TeachersClientProps) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [departmentFilter, setDepartmentFilter] = useState('');
+  const [departments, setDepartments] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState<'code' | 'name' | 'leaves' | 'department'>('code');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -96,6 +97,13 @@ export default function TeachersClient({ hrUser }: TeachersClientProps) {
     department: '',
     phoneNumber: '',
   });
+
+  useEffect(() => {
+    fetch('/api/hr/teachers/departments')
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error('Failed to fetch'))))
+      .then((data) => setDepartments(data.departments ?? []))
+      .catch((error) => console.error('Failed to fetch departments:', error));
+  }, []);
 
   useEffect(() => {
     fetchTeachers();
@@ -386,7 +394,7 @@ export default function TeachersClient({ hrUser }: TeachersClientProps) {
 
   return (
     <HrLayoutWrapper hrUser={hrUser}>
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24 lg:pb-8">
       {/* Header */}
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4">
@@ -514,16 +522,21 @@ export default function TeachersClient({ hrUser }: TeachersClientProps) {
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                       กลุ่มสาระ/ฝ่าย
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={departmentFilter}
                       onChange={(e) => {
                         setDepartmentFilter(e.target.value);
                         setPagination((p) => ({ ...p, page: 1 }));
                       }}
-                      placeholder="ค้นหากลุ่มสาระ..."
                       className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none"
-                    />
+                    >
+                      <option value="">ทั้งหมด</option>
+                      {departments.map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   {hasActiveFilters && (
@@ -847,15 +860,24 @@ export default function TeachersClient({ hrUser }: TeachersClientProps) {
                     <label className="block text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">
                       กลุ่มสาระ/ฝ่าย
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={formData.department}
                       onChange={(e) =>
                         setFormData({ ...formData, department: e.target.value })
                       }
-                      placeholder="เช่น คณิตศาสตร์"
                       className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none"
-                    />
+                    >
+                      <option value="">-- เลือก --</option>
+                      {/* ครูที่มีกลุ่มเดิมซึ่งไม่อยู่ในรายการ (เช่น เหลือแต่ครูที่ปิดใช้งาน) ต้องไม่หาย */}
+                      {formData.department && !departments.includes(formData.department) && (
+                        <option value={formData.department}>{formData.department}</option>
+                      )}
+                      {departments.map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">
