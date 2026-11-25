@@ -61,19 +61,24 @@ export async function POST(req: NextRequest) {
     }
 
     // Copy holidays to target year
-    const yearDiff = toYear - fromYear;
-    const newHolidays = sourceHolidays.map((h) => {
-      const newDate = new Date(h.date);
-      newDate.setFullYear(newDate.getFullYear() + yearDiff);
-      return {
+    // ใช้ UTC ทั้งหมด (คอลัมน์เป็น @db.Date เก็บเป็นเที่ยงคืน UTC)
+    // ข้าม 29 ก.พ. ถ้าปีปลายทางไม่ใช่ปีอธิกสุรทิน (ไม่ให้เลื่อนไป 1 มี.ค.)
+    const targetYear = Number(toYear);
+    const newHolidays = sourceHolidays.flatMap((h) => {
+      const m = h.date.getUTCMonth();
+      const d = h.date.getUTCDate();
+      const newDate = new Date(Date.UTC(targetYear, m, d));
+      if (newDate.getUTCMonth() !== m) return [];
+      return [{
         date: newDate,
         name: h.name,
-        year: newDate.getFullYear() + 543, // พ.ศ.
-      };
+        year: targetYear + 543, // พ.ศ.
+      }];
     });
 
     await prisma.holiday.createMany({
       data: newHolidays,
+      skipDuplicates: true,
     });
 
     // TODO: Audit log

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getHrSession } from '@/lib/getSession';
 import { prisma } from '@/lib/prisma';
-import { longCacheHeaders } from '@/lib/cacheHeaders';
+import { noCacheHeaders } from '@/lib/cacheHeaders';
 
 export async function GET(req: NextRequest) {
   try {
@@ -42,7 +42,8 @@ export async function GET(req: NextRequest) {
         createdAt: h.createdAt.toISOString(),
       })),
     }, {
-      headers: longCacheHeaders,
+      // ห้าม cache: เป็นข้อมูลที่ต้องล็อกอิน และต้องเห็นผลทันทีหลังเพิ่ม/ลบ/แก้ไข
+      headers: noCacheHeaders,
     });
   } catch (error) {
     console.error('Failed to fetch holidays:', error);
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { date: dateStr, name } = body;
 
-    if (!dateStr || !name) {
+    if (!dateStr || typeof name !== 'string' || !name.trim()) {
       return NextResponse.json(
         { error: 'ข้อมูลไม่ครบถ้วน' },
         { status: 400 }
@@ -72,7 +73,13 @@ export async function POST(req: NextRequest) {
 
     // Parse date with UTC timezone to prevent timezone shift
     // Format: "2026-09-14" -> "2026-09-14T00:00:00.000Z"
+    if (typeof dateStr !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return NextResponse.json({ error: 'รูปแบบวันที่ไม่ถูกต้อง' }, { status: 400 });
+    }
     const date = new Date(dateStr + 'T00:00:00.000Z');
+    if (isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== dateStr) {
+      return NextResponse.json({ error: 'วันที่ไม่ถูกต้อง' }, { status: 400 });
+    }
 
     // Check if holiday already exists on this date
     const existing = await prisma.holiday.findFirst({
@@ -90,7 +97,7 @@ export async function POST(req: NextRequest) {
       data: {
         date,
         name: name.trim(),
-        year: date.getFullYear() + 543, // พ.ศ.
+        year: date.getUTCFullYear() + 543, // พ.ศ.
       },
     });
 
@@ -103,7 +110,13 @@ export async function POST(req: NextRequest) {
         name: holiday.name,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === 'P2002') {
+      return NextResponse.json(
+        { error: 'มีวันหยุดในวันนี้อยู่แล้ว' },
+        { status: 400 }
+      );
+    }
     console.error('Failed to create holiday:', error);
     return NextResponse.json(
       { error: 'เกิดข้อผิดพลาดในการสร้างวันหยุด' },

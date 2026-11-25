@@ -3,6 +3,13 @@ import { getHrSession } from '@/lib/getSession';
 import { prisma } from '@/lib/prisma';
 import { calculateLeaveDays } from '@/lib/leaveCalculator';
 import { parseISODateSafe } from '@/lib/dateUtils';
+import { formatDateForAPI } from '@/lib/dateFormat';
+
+// คอลัมน์ @db.Date: Prisma แปลงเป็น UTC แล้วตัดเหลือวัน
+// ต้องส่งเป็นเที่ยงคืน UTC เสมอ ไม่งั้นถ้า server ไม่ได้อยู่ใน UTC (เช่น run dev ในไทย) วันที่จะเลื่อน -1 วัน
+function toUTCDate(localDate: Date): Date {
+  return new Date(formatDateForAPI(localDate) + 'T00:00:00.000Z');
+}
 
 export async function PATCH(
   req: NextRequest,
@@ -97,6 +104,9 @@ export async function PATCH(
       );
     }
 
+    const startUTC = toUTCDate(start);
+    const endUTC = toUTCDate(end);
+
     // Fetch holidays
     const minYear = start.getFullYear();
     const maxYear = end.getFullYear();
@@ -108,8 +118,8 @@ export async function PATCH(
     const holidays = await prisma.holiday.findMany({
       where: {
         date: {
-          gte: start,
-          lte: end,
+          gte: startUTC,
+          lte: endUTC,
         },
       },
       select: { date: true },
@@ -165,8 +175,8 @@ export async function PATCH(
         data: {
           type,
           customTypeName: type === 'other' ? customTypeName : null,
-          startDate: start,
-          endDate: end,
+          startDate: startUTC,
+          endDate: endUTC,
           isHalfDay: isHalfDay || false,
           halfDayPeriod: isHalfDay ? halfDayPeriod : null,
           reason,
@@ -181,7 +191,7 @@ export async function PATCH(
       await tx.leaveDay.createMany({
         data: leaveDays.map((ld) => ({
           leaveId: id,
-          date: ld.date,
+          date: toUTCDate(ld.date),
           isHalfDay: ld.isHalfDay,
           halfDayPeriod: ld.halfDayPeriod,
           isWorkingDay: ld.isWorkingDay,

@@ -56,7 +56,9 @@ export default function HolidaysClient({ hrUser }: HolidaysClientProps) {
   const fetchHolidays = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/hr/holidays?year=${selectedYear}`);
+      const res = await fetch(`/api/hr/holidays?year=${selectedYear}`, {
+        cache: 'no-store',
+      });
       if (res.ok) {
         const data = await res.json();
         setHolidays(data.holidays);
