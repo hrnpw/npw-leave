@@ -10,6 +10,7 @@ import {
   HardDrive,
   Settings,
   Shield,
+  Bell,
   UserPlus,
   LogOut,
   ChevronRight,
@@ -95,6 +96,14 @@ export default function HrMenuClient({ hrUser }: HrMenuClientProps) {
       description: 'จัดการบัญชี Audit log โซนอันตราย',
       href: '/hr/admin',
       color: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400',
+      adminOnly: true,
+    },
+    {
+      icon: Bell,
+      label: 'การแจ้งเตือนของครู',
+      description: 'ครูที่เปิด push และเวลาเข้าแอปล่าสุด',
+      href: '/hr/admin/push',
+      color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400',
       adminOnly: true,
     },
   ];

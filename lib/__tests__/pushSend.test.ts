@@ -62,13 +62,13 @@ describe('sendPushToTeacher', () => {
       { id: 'sub-2', endpoint: 'https://push.example.com/2', p256dh: 'p2', auth: 'a2' },
     ]);
     sendNotificationMock.mockResolvedValue(undefined);
-    updateMock.mockResolvedValue(undefined);
 
     const { sendPushToTeacher } = await import('../push/send');
     await sendPushToTeacher('teacher-1', { title: 't', body: 'b', url: '/u' });
 
     expect(sendNotificationMock).toHaveBeenCalledTimes(2);
-    expect(updateMock).toHaveBeenCalledTimes(2);
+    // lastUsedAt = เวลาเข้าแอปล่าสุด จึงไม่อัปเดตตอนส่ง
+    expect(updateMock).not.toHaveBeenCalled();
     expect(deleteManyMock).not.toHaveBeenCalled();
   });
 

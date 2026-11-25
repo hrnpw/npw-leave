@@ -61,12 +61,9 @@ export async function sendPushToTeacher(
     await Promise.allSettled(
       results.map((result, i) => {
         const sub = subscriptions[i];
-        if (result.status === 'fulfilled') {
-          return prisma.pushSubscription.update({
-            where: { id: sub.id },
-            data: { lastUsedAt: new Date() },
-          });
-        }
+        // ส่งสำเร็จไม่ต้องแตะ lastUsedAt: ค่านี้ใช้เป็น "เวลาเข้าแอปล่าสุดของเครื่องนี้"
+        // (อัปเดตตอนครูเปิดหน้า dashboard แล้ว sync subscription) ดูได้ที่ /hr/admin/push
+        if (result.status === 'fulfilled') return undefined;
 
         const statusCode = (result.reason as { statusCode?: number })?.statusCode;
         if (statusCode === 404 || statusCode === 410) {

@@ -15,6 +15,7 @@ import {
   HardDrive,
   Settings,
   Shield,
+  Bell,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -168,7 +169,14 @@ export default function HrSidebar({ hrUser, counts }: HrSidebarProps) {
           label: 'Admin Zone',
           icon: Shield,
           iconColor: 'text-purple-500',
-          active: pathname.startsWith('/hr/admin'),
+          active: pathname === '/hr/admin',
+        },
+        {
+          href: '/hr/admin/push',
+          label: 'การแจ้งเตือนของครู',
+          icon: Bell,
+          iconColor: 'text-purple-500',
+          active: pathname.startsWith('/hr/admin/push'),
         },
       ],
     });
