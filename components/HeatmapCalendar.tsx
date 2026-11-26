@@ -89,7 +89,7 @@ export function HeatmapCalendar({
       <div className="flex items-center justify-between mb-4">
         <button
           onClick={handlePrevMonth}
-          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+          className="inline-flex items-center justify-center min-w-11 min-h-11 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
           aria-label="เดือนก่อนหน้า"
         >
           <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-slate-400" />
@@ -101,7 +101,7 @@ export function HeatmapCalendar({
 
         <button
           onClick={handleNextMonth}
-          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+          className="inline-flex items-center justify-center min-w-11 min-h-11 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
           aria-label="เดือนถัดไป"
         >
           <ChevronRight className="w-5 h-5 text-slate-600 dark:text-slate-400" />
@@ -174,7 +174,7 @@ export function HeatmapCalendar({
                 </span>
 
                 {count > 0 && isCurrentMonth && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 md:w-6 md:h-6 bg-orange-500 dark:bg-orange-600 text-white text-[10px] md:text-xs font-bold rounded-full flex items-center justify-center shadow-md border-2 border-white dark:border-slate-900">
+                  <span className="absolute -top-1 -right-1 min-w-[22px] h-[22px] px-1 md:min-w-6 md:h-6 bg-orange-500 dark:bg-orange-600 text-white text-[11px] leading-none md:text-xs font-bold rounded-full flex items-center justify-center shadow-md border-2 border-white dark:border-slate-900">
                     {count}
                   </span>
                 )}

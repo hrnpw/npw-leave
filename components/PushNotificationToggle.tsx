@@ -18,7 +18,21 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
-type Status = 'checking' | 'unsupported' | 'ios-need-install' | 'denied' | 'subscribed' | 'unsubscribed';
+const PROMPT_STORAGE_KEY = 'push_prompt_last_shown';
+const PROMPT_INTERVAL_MS = 3 * 24 * 60 * 60 * 1000;
+
+function shouldShowPrompt() {
+  try {
+    const lastShown = Number(localStorage.getItem(PROMPT_STORAGE_KEY) || '0');
+    if (Date.now() - lastShown < PROMPT_INTERVAL_MS) return false;
+    localStorage.setItem(PROMPT_STORAGE_KEY, String(Date.now()));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+type Status ='checking' | 'unsupported' | 'ios-need-install' | 'denied' | 'subscribed' | 'unsubscribed';
 
 async function postSubscription(subscription: PushSubscription) {
   await fetch('/api/teacher/push/subscribe', {
@@ -69,7 +83,7 @@ export function PushNotificationToggle() {
       if (!subscription) {
         if (!cancelled) {
           setStatus('unsubscribed');
-          setShowPrompt(true);
+          if (shouldShowPrompt()) setShowPrompt(true);
         }
         return;
       }
@@ -233,7 +247,7 @@ export function PushNotificationToggle() {
                       เปิดการแจ้งเตือน
                     </h3>
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                      รับการแจ้งเตือนทันทีเมื่อใบลาของคุณได้รับการอนุมัติิ
+                      รับการแจ้งเตือนทันทีเมื่อใบลาของคุณได้รับการอนุมัติ
                       กดที่ไอคอน[กระดิ่ง]ด้านบนหรือปุ่มด้านล่างเพื่อเปิดการแจ้งเตือน
                     </p>
                     <div className="flex gap-3">

@@ -43,7 +43,7 @@ export function LeaveStatusIcon({ status }: { status?: string }) {
       onMouseLeave={() => setOpen(false)}
       onFocus={() => setOpen(true)}
       onBlur={() => setOpen(false)}
-      className="relative inline-flex flex-shrink-0 items-center justify-center rounded-full cursor-pointer"
+      className="relative inline-flex flex-shrink-0 items-center justify-center rounded-full cursor-pointer before:absolute before:-inset-1.5 before:content-['']"
     >
       <Icon className={`w-4 h-4 ${color}`} aria-hidden="true" />
       {open && (

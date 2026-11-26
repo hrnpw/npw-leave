@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence, MotionConfig, type Variants } from 'framer-motion';
-import { Users, UserMinus, Calendar, RefreshCw, Rocket } from 'lucide-react';
+import { Users, UserMinus, Calendar, RefreshCw, Rocket, AlertTriangle } from 'lucide-react';
 import { CountUp } from '@/components/CountUp';
 import { DarkModeToggle } from '@/components/DarkModeToggle';
 import { HeatmapCalendar } from '@/components/HeatmapCalendar';
@@ -146,6 +146,7 @@ export default function HomePage() {
         fetchCache.fetch('/api/public/summary', options).then((data) => {
           setSummary(data);
           setLastRefresh(new Date());
+          setError(null);
         }),
         fetchCache.fetch(`/api/public/dashboard?year=${year}&month=${month}`, options).then((data) => {
           setHeatmapData(data.heatmap);
@@ -155,8 +156,12 @@ export default function HomePage() {
     } catch (err) {
       console.error('Fetch error:', err);
       if (silent) return;
-      const message = err instanceof Error ? err.message : 'ไม่สามารถโหลดข้อมูลได้';
-      setError(message);
+      const offline = typeof navigator !== 'undefined' && !navigator.onLine;
+      setError(
+        offline
+          ? 'ไม่มีการเชื่อมต่ออินเทอร์เน็ต กรุณาตรวจสอบสัญญาณแล้วลองใหม่'
+          : 'ไม่สามารถโหลดข้อมูลสรุปได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง'
+      );
     }
   };
   fetchDataRef.current = fetchData;
@@ -231,32 +236,19 @@ export default function HomePage() {
     [summary]
   );
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center p-4">
-        <div className="text-center">
-          <p className="text-slate-600 dark:text-slate-400 mb-4">{error}</p>
-          <button
-            onClick={() => fetchData()}
-            className="px-6 py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-medium transition-colors"
-          >
-            ลองใหม่
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   const currentDate = summary ? new Date(summary.date) : new Date();
+  // Summary failed and nothing to show yet → replace stats/list with an inline error card
+  const summaryFailed = !!error && !summary;
+  const isTodayHoliday = !!summary?.todayHoliday;
 
   return (
     <MotionConfig reducedMotion="user">
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 pb-24">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 pb-[calc(6rem+env(safe-area-inset-bottom))]">
       <PullToRefreshIndicator pull={pull} state={pullState} threshold={pullThreshold} />
       {/* Header */}
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-4xl mx-auto px-4 py-3">
-          <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1 flex items-center gap-3">
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
@@ -286,12 +278,12 @@ export default function HomePage() {
                 )}
               </div>
             </div>
-            <div className="flex flex-col xs:flex-row items-end xs:items-center gap-2">
+            <div className="flex flex-col xs:flex-row items-end xs:items-center gap-1 xs:gap-2 -my-2">
               <DarkModeToggle />
               <button
                 onClick={handleRefresh}
                 disabled={isRefreshing}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50"
+                className="inline-flex items-center justify-center min-w-11 min-h-11 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50"
                 aria-label="รีเฟรชข้อมูล"
               >
                 <RefreshCw className={`w-5 h-5 text-slate-600 dark:text-slate-400 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -319,7 +311,34 @@ export default function HomePage() {
           </motion.div>
         )}
 
+        {/* Error card (inline so CTA bar stays usable) */}
+        {error && (
+          <motion.div
+            variants={item}
+            role="alert"
+            className={`rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/30 ${summaryFailed ? 'p-5 text-center' : 'p-3 flex items-center gap-3'}`}
+          >
+            <AlertTriangle
+              aria-hidden="true"
+              className={`text-red-600 dark:text-red-400 flex-shrink-0 ${summaryFailed ? 'w-7 h-7 mx-auto mb-2' : 'w-5 h-5'}`}
+            />
+            <p className={`text-body-sm text-red-800 dark:text-red-200 ${summaryFailed ? 'mb-3' : 'flex-1 min-w-0'}`}>
+              {summaryFailed ? error : 'อัปเดตข้อมูลไม่สำเร็จ ข้อมูลที่แสดงอาจไม่เป็นปัจจุบัน'}
+            </p>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="inline-flex items-center justify-center gap-2 min-h-11 px-4 rounded-lg bg-white dark:bg-slate-900 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-300 font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors disabled:opacity-60 flex-shrink-0"
+            >
+              <RefreshCw aria-hidden="true" className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'กำลังโหลด…' : 'ลองใหม่'}
+            </button>
+          </motion.div>
+        )}
+
         {/* Stats cards */}
+        {!summaryFailed && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           {/* Attending - full width on mobile */}
           <motion.div
@@ -334,7 +353,11 @@ export default function HomePage() {
                 มาปฏิบัติงาน
               </h3>
             </div>
-            {!summary ? (<div className="h-6 w-16 rounded-md bg-slate-200 dark:bg-slate-800 animate-pulse" aria-hidden />) : (
+            {!summary ? (<div className="h-6 w-16 rounded-md bg-slate-200 dark:bg-slate-800 animate-pulse" aria-hidden />) : isTodayHoliday ? (
+              <p className="text-label text-secondary leading-snug">
+                วันนี้เป็นวันหยุด
+              </p>
+            ) : (
               <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 leading-none tabular-nums">
                 <CountUp end={summary.attendingToday} duration={600} /><span className="text-body-sm text-tertiary font-normal ml-1">/ {summary.totalTeachers} คน</span>
               </p>
@@ -356,7 +379,11 @@ export default function HomePage() {
                   ลาวันนี้
                 </h3>
               </div>
-              {!summary ? (<div className="h-6 w-16 rounded-md bg-slate-200 dark:bg-slate-800 animate-pulse" aria-hidden />) : (
+              {!summary ? (<div className="h-6 w-16 rounded-md bg-slate-200 dark:bg-slate-800 animate-pulse" aria-hidden />) : isTodayHoliday && summary.leavesToday === 0 ? (
+                <p className="text-label text-secondary leading-snug">
+                  วันหยุด
+                </p>
+              ) : (
                 <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 leading-none tabular-nums">
                   <CountUp end={summary.leavesToday} duration={600} /> <span className="text-body-sm text-tertiary font-normal ml-1">คน</span>
                 </p>
@@ -388,9 +415,10 @@ export default function HomePage() {
             </motion.div>
           </div>
         </div>
+        )}
 
         {/* Leave list */}
-        {!summary ? (
+        {summaryFailed ? null : !summary ? (
           <motion.div
             variants={item}
             aria-hidden
@@ -453,7 +481,7 @@ export default function HomePage() {
             </motion.div>
             <LeaveStatusIconLegend className="pt-3" />
           </motion.div>
-        ) : (
+        ) : isTodayHoliday ? null : (
           <motion.div
             variants={item}
             className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/30 dark:to-blue-950/30 rounded-xl p-8 text-center border border-sky-100 dark:border-sky-900/50 shadow-lg shadow-sky-100/50 dark:shadow-sky-950/50"
@@ -497,13 +525,13 @@ export default function HomePage() {
               onClose={closeModal}
             >
               {selectedDayLeaves.length === 0 ? (
-                <div className="text-center py-8 text-slate-500">
-                  ไม่มีครูลาวันนี้
+                <div className="text-center py-8 text-secondary">
+                  ไม่มีครูลาในวันที่เลือก
                 </div>
               ) : (
                 <>
                   <p className="text-body-sm text-secondary mb-3">
-                    มีครู {selectedDayLeaves.length} คนลาในวันนี้
+                    มีครูลาทั้งหมด {selectedDayLeaves.length} คน
                   </p>
 
                   <div className="space-y-2">
@@ -550,7 +578,7 @@ export default function HomePage() {
         </AnimatePresence>
       </motion.main>
 
-      <footer className="max-w-4xl mx-auto px-4 pt-2 pb-4 text-center text-caption text-tertiary">
+      <footer className="max-w-4xl mx-auto px-4 pt-2 pb-4 text-center text-caption text-secondary">
         Developed by HR-NPW · © 2569
       </footer>
 

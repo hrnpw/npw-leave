@@ -6,7 +6,7 @@ import { Play, Smartphone } from 'lucide-react';
 import { Modal } from '@/components/Modal';
 
 const STORAGE_KEY = 'add_to_home_modal_last_shown';
-const INTERVAL_MS = 1 * 24 * 60 * 60 * 1000;
+const INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
 const TUTORIAL_URL = 'https://www.youtube.com/shorts/8O3805Zf8g0';
 
 function isStandalone() {

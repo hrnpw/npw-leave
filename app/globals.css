@@ -91,7 +91,7 @@
   }
 
   .text-tertiary {
-    @apply text-slate-500 dark:text-slate-500;
+    @apply text-slate-500 dark:text-slate-400;
   }
 
   .text-muted {
